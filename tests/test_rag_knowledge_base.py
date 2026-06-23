@@ -62,3 +62,18 @@ def test_knowledge_base_search_returns_empty_context_for_no_match(
     assert search.results == ()
     assert search.built_context.context == ""
     assert search.built_context.citations == ()
+
+
+def test_day2_evaluation_document_is_retrievable() -> None:
+    knowledge_base = KnowledgeBase.from_directory(Path("examples/knowledge_base"))
+
+    search = knowledge_base.search("How does eval work?", top_k=3)
+
+    actual_top_3_sources = [
+        result.chunk.metadata.relative_path for result in search.results
+    ]
+
+    assert "evaluation.md" in actual_top_3_sources
+    assert search.built_context.citations
+    assert "evaluation.md" in search.built_context.context
+    assert "Eval work follows a repeatable loop" in search.built_context.context
