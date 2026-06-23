@@ -176,6 +176,7 @@ class NativeAgentRuntime:
                                 "tool_name": tool_result.tool_name,
                                 "success": tool_result.success,
                                 "error_code": tool_result.error_code,
+                                "payload": tool_result.payload,
                             },
                         )
                     )
