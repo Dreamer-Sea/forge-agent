@@ -12,13 +12,12 @@ This project is intentionally small and implementation-focused. It is designed a
 * Deterministic `FakeProvider` for testing and demos
 * Provider abstraction independent of any specific LLM vendor
 * Tool Calling flow with normalized `ToolCall` and `ToolResult`
-* Tool Registry for registering and discovering tools by name
-* Built-in demo tools:
+* Tool Registry for registering, discovering, and executing tools by name
+* Built-in Day 1 demo tools:
 
   * `list_files`
   * `read_file`
   * `calculator`
-  * `echo_text`
 * Structured runtime result with:
 
   * final answer
@@ -42,7 +41,6 @@ Implemented:
 * `ToolRegistry`
 * Basic file tools
 * Safe arithmetic calculator tool
-* Echo text assessment tool
 * `NativeAgentRuntime`
 * In-memory `TraceEvent`
 * CLI command: `forge run`
@@ -58,9 +56,79 @@ Not implemented yet:
 * Observability export
 * Deployment
 
-## Architecture
+## Architecture Overview
 
-The core runtime flow is:
+```mermaid
+flowchart LR
+    User["User"] --> CLI["Typer CLI<br/>forge run"]
+    CLI --> Runtime["NativeAgentRuntime"]
+
+    Runtime --> Provider["ModelProvider<br/>FakeProvider"]
+    Provider --> Runtime
+
+    Runtime --> Registry["ToolRegistry"]
+    Registry --> Tools["Tools"]
+
+    Tools --> ListFiles["list_files"]
+    Tools --> ReadFile["read_file"]
+    Tools --> Calculator["calculator"]
+
+    Runtime --> Trace["TraceEvent<br/>in-memory events"]
+    Runtime --> Result["AgentRunResult"]
+
+    Result --> CLI
+
+    classDef core fill:#eef6ff,stroke:#2f6feb,stroke-width:1px;
+    classDef tool fill:#f6ffed,stroke:#52c41a,stroke-width:1px;
+    classDef output fill:#fff7e6,stroke:#fa8c16,stroke-width:1px;
+
+    class CLI,Runtime,Provider,Registry core;
+    class Tools,ListFiles,ReadFile,Calculator tool;
+    class Trace,Result output;
+```
+
+## Agent Runtime Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant CLI as Typer CLI
+    participant Runtime as NativeAgentRuntime
+    participant Provider as FakeProvider
+    participant Registry as ToolRegistry
+    participant Tool as Tool
+
+    User->>CLI: forge run "list files and read README"
+    CLI->>Runtime: run(user_input)
+    Runtime->>Provider: complete(messages, tools)
+    Provider-->>Runtime: ToolCall(list_files), ToolCall(read_file)
+
+    Runtime->>Registry: execute("list_files", {})
+    Registry->>Tool: ListFilesTool.execute()
+    Tool-->>Registry: ToolResult(success=true)
+    Registry-->>Runtime: ToolResult
+
+    Runtime->>Registry: execute("read_file", {"path": "README.md"})
+    Registry->>Tool: ReadFileTool.execute()
+    Tool-->>Registry: ToolResult(success=true)
+    Registry-->>Runtime: ToolResult
+
+    Runtime->>Provider: complete(messages + tool observations, tools)
+    Provider-->>Runtime: final_answer
+    Runtime-->>CLI: AgentRunResult
+    CLI-->>User: final answer + trace summary
+```
+
+## Core Runtime Flow
+
+The core runtime loop is:
+
+```text
+model_call -> tool_call -> tool_result -> next model_call -> final_answer
+```
+
+The full internal chain is:
 
 ```text
 User Input
@@ -75,7 +143,7 @@ User Input
   -> Final Answer
 ```
 
-The project separates the major platform concerns:
+## Project Structure
 
 ```text
 src/forge_agent/
@@ -97,7 +165,12 @@ src/forge_agent/
     defaults.py
     file_tools.py
     calculator.py
-    echo.py
+
+tests/
+  test_cli_run.py
+  test_provider_fake.py
+  test_runtime_native.py
+  test_tool_registry.py
 ```
 
 ## Installation
@@ -178,12 +251,11 @@ Each tool provides:
 * argument validation
 * structured execution result
 
-Example tools:
+Current tools:
 
 * `list_files`: list files under a directory
 * `read_file`: read a UTF-8 text file
 * `calculator`: evaluate a safe arithmetic expression
-* `echo_text`: echo the provided text
 
 ### ToolRegistry
 
@@ -233,6 +305,95 @@ Current event types:
 
 Trace export is intentionally not implemented yet. Future versions may export traces to JSONL, OpenTelemetry, or external observability systems.
 
+## Tool Extension Flow
+
+```mermaid
+flowchart TD
+    Start["Need a new tool"] --> Args["Define Pydantic Args Model"]
+    Args --> ToolClass["Implement Tool Class"]
+    ToolClass --> Schema["Expose ToolSchema"]
+    ToolClass --> Execute["Implement execute(arguments)"]
+    Execute --> Result["Return ToolResult"]
+
+    Result --> Register["Register in create_default_tool_registry()"]
+    Register --> UnitTest["Add tool unit tests"]
+    UnitTest --> RuntimeTest["Add runtime-level test"]
+    RuntimeTest --> Quality["Run pytest + mypy + ruff"]
+    Quality --> Done["Tool is available to AgentRuntime"]
+
+    classDef step fill:#eef6ff,stroke:#2f6feb,stroke-width:1px;
+    classDef check fill:#f6ffed,stroke:#52c41a,stroke-width:1px;
+    classDef done fill:#fff7e6,stroke:#fa8c16,stroke-width:1px;
+
+    class Args,ToolClass,Schema,Execute,Result,Register step;
+    class UnitTest,RuntimeTest,Quality check;
+    class Done done;
+```
+
+## Adding a New Tool
+
+To add a new tool:
+
+1. Create a new file under `src/forge_agent/tools/`
+2. Define a Pydantic argument model
+3. Implement `schema()`
+4. Implement `execute()`
+5. Return a structured `ToolResult`
+6. Register the tool in `create_default_tool_registry()`
+7. Add unit tests for success and validation failure
+8. Add runtime-level tests if the tool is part of the default runtime demo
+
+Example structure:
+
+```python
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, ValidationError
+
+from forge_agent.tools.base import ToolResult, ToolSchema
+
+
+class ExampleArgs(BaseModel):
+    text: str
+
+
+class ExampleTool:
+    name = "example_tool"
+    description = "Example tool description."
+
+    def schema(self) -> ToolSchema:
+        return ToolSchema(
+            name=self.name,
+            description=self.description,
+            parameters=ExampleArgs.model_json_schema(),
+        )
+
+    def execute(
+        self,
+        arguments: dict[str, Any],
+        tool_call_id: str | None = None,
+    ) -> ToolResult:
+        try:
+            args = ExampleArgs.model_validate(arguments)
+
+            return ToolResult(
+                tool_name=self.name,
+                tool_call_id=tool_call_id,
+                success=True,
+                payload={"text": args.text},
+            )
+        except ValidationError as error:
+            return ToolResult(
+                tool_name=self.name,
+                tool_call_id=tool_call_id,
+                success=False,
+                error_code="validation_error",
+                error_message=str(error),
+            )
+```
+
 ## Development
 
 Run tests:
@@ -259,69 +420,6 @@ Run all quality checks:
 uv run pytest -q
 uv run mypy src tests
 uv run ruff check .
-```
-
-## Adding a New Tool
-
-To add a new tool:
-
-1. Create a new file under `src/forge_agent/tools/`
-2. Define a Pydantic argument model
-3. Implement `schema()`
-4. Implement `execute()`
-5. Return a structured `ToolResult`
-6. Register the tool in `create_default_tool_registry()`
-7. Add unit tests for success and validation failure
-8. Add runtime-level tests if the tool is part of the default runtime demo
-
-Example tool structure:
-
-```python
-from __future__ import annotations
-
-from typing import Any
-
-from pydantic import BaseModel, ValidationError
-
-from forge_agent.tools.base import ToolResult, ToolSchema
-
-
-class EchoTextArgs(BaseModel):
-    text: str
-
-
-class EchoTextTool:
-    name = "echo_text"
-    description = "Echo the provided text."
-
-    def schema(self) -> ToolSchema:
-        return ToolSchema(
-            name=self.name,
-            description=self.description,
-            parameters=EchoTextArgs.model_json_schema(),
-        )
-
-    def execute(
-        self,
-        arguments: dict[str, Any],
-        tool_call_id: str | None = None,
-    ) -> ToolResult:
-        try:
-            args = EchoTextArgs.model_validate(arguments)
-            return ToolResult(
-                tool_name=self.name,
-                tool_call_id=tool_call_id,
-                success=True,
-                payload={"text": args.text},
-            )
-        except ValidationError as error:
-            return ToolResult(
-                tool_name=self.name,
-                tool_call_id=tool_call_id,
-                success=False,
-                error_code="validation_error",
-                error_message=str(error),
-            )
 ```
 
 ## Design Principles
