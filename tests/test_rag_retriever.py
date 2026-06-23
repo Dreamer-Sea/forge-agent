@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 from forge_agent.rag.chunker import Chunk, ChunkMetadata
-from forge_agent.rag.retriever import KeywordRetriever, tokenize
+from forge_agent.rag.retriever import KeywordRetriever, expand_query_tokens, tokenize
 
 
 def make_chunk(
-    *,
-    content: str,
-    relative_path: str,
-    heading_path: tuple[str, ...],
-    ordinal: int,
+        *,
+        content: str,
+        relative_path: str,
+        heading_path: tuple[str, ...],
+        ordinal: int,
 ) -> Chunk:
     source_id = f"markdown:{relative_path}"
 
@@ -128,3 +128,26 @@ def test_tokenize_supports_english_numbers_and_cjk() -> None:
     assert "2026" in tokens
     assert "核" in tokens
     assert "心" in tokens
+
+
+def test_retriever_expands_chinese_core_module_query() -> None:
+    retriever = KeywordRetriever(make_chunks())
+
+    results = retriever.search("Agent Runtime 有哪些核心模块？", top_k=3)
+
+    assert results
+    assert results[0].chunk.metadata.relative_path == "agent-runtime.md"
+    assert results[0].chunk.metadata.heading_path == (
+        "Agent Runtime",
+        "Components",
+    )
+
+
+def test_expand_query_tokens_adds_demo_aliases() -> None:
+    tokens = expand_query_tokens("Agent Runtime 有哪些核心模块？")
+
+    assert "agent" in tokens
+    assert "runtime" in tokens
+    assert "core" in tokens
+    assert "modules" in tokens
+    assert "components" in tokens

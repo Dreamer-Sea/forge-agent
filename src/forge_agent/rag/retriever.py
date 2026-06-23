@@ -52,7 +52,7 @@ class KeywordRetriever:
         if limit <= 0:
             raise ValueError("top_k must be greater than 0")
 
-        query_tokens = tokenize(query)
+        query_tokens = expand_query_tokens(query)
 
         if not query_tokens:
             return []
@@ -142,6 +142,39 @@ class KeywordRetriever:
 
     def _document_lengths(self) -> list[int]:
         return [max(len(tokens), 1) for tokens in self._tokenized_chunks]
+
+
+_QUERY_ALIASES = {
+    "核心模块": ["core", "modules", "components"],
+    "模块": ["modules", "components"],
+    "作用": ["role", "responsible", "purpose"],
+    "检索": ["retrieval", "retriever", "search"],
+    "引用": ["citation", "citations", "source"],
+    "溯源": ["citation", "citations", "source", "traceable"],
+    "权限": ["permission", "policy", "allowed"],
+    "如何工作": ["checks", "controls", "works"],
+    "记录哪些内容": ["record", "records", "events"],
+    "事件": ["event", "events"],
+}
+
+
+def expand_query_tokens(query: str) -> list[str]:
+    """Tokenize a query and add small demo-level multilingual aliases.
+
+    This is intentionally lightweight. Day 2 uses keyword/BM25 retrieval, so
+    common Chinese queries need a few English aliases to match the English
+    sample knowledge base.
+    """
+    tokens = tokenize(query)
+    expanded = list(tokens)
+
+    lowered = query.lower()
+
+    for phrase, aliases in _QUERY_ALIASES.items():
+        if phrase in lowered:
+            expanded.extend(aliases)
+
+    return expanded
 
 
 def tokenize(text: str) -> list[str]:
