@@ -91,6 +91,31 @@ class NativeAgentRuntime:
                     )
 
                 if not response.has_tool_calls:
+                    if response.content is None:
+                        error_message = (
+                            "Provider returned empty response without tool calls or final answer."
+                        )
+
+                        state.trace_events.append(
+                            TraceEvent(
+                                event_type="runtime_stop",
+                                step=step,
+                                data={
+                                    "reason": "error",
+                                    "error_message": error_message,
+                                },
+                            )
+                        )
+
+                        return AgentRunResult(
+                            final_answer=None,
+                            stopped_reason="error",
+                            steps=step + 1,
+                            tool_results=list(state.tool_results),
+                            trace_events=list(state.trace_events),
+                            error_message=error_message,
+                        )
+
                     final_answer = response.content
 
                     state.trace_events.append(

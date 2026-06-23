@@ -15,18 +15,18 @@ from forge_agent.tools.registry import ToolRegistry
 
 class FinalAnswerProvider:
     def complete(
-            self,
-            messages: list[ModelMessage],
-            tools: list[dict[str, Any]],
+        self,
+        messages: list[ModelMessage],
+        tools: list[dict[str, Any]],
     ) -> ProviderResponse:
         return ProviderResponse(final_answer="Done.")
 
 
 class LoopingProvider:
     def complete(
-            self,
-            messages: list[ModelMessage],
-            tools: list[dict[str, Any]],
+        self,
+        messages: list[ModelMessage],
+        tools: list[dict[str, Any]],
     ) -> ProviderResponse:
         return ProviderResponse(
             content="Need another tool call.",
@@ -40,9 +40,18 @@ class LoopingProvider:
         )
 
 
+class EmptyResponseProvider:
+    def complete(
+        self,
+        messages: list[ModelMessage],
+        tools: list[dict[str, Any]],
+    ) -> ProviderResponse:
+        return ProviderResponse()
+
+
 def test_agent_runtime_executes_tool_call(
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     readme = tmp_path / "README.md"
     readme.write_text("# forge-agent", encoding="utf-8")
@@ -136,8 +145,8 @@ def test_agent_runtime_returns_structured_result() -> None:
 
 
 def test_trace_records_model_call_and_tool_result(
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     readme = tmp_path / "README.md"
     readme.write_text("# forge-agent", encoding="utf-8")
@@ -162,44 +171,38 @@ def test_trace_records_model_call_and_tool_result(
     assert "final_answer" in event_types
 
 
-class EchoProvider:
-    def complete(
-            self,
-            messages: list[ModelMessage],
-            tools: list[dict[str, Any]],
-    ) -> ProviderResponse:
-        tool_observations = [message for message in messages if message.role == "tool"]
-
-        if not tool_observations:
-            return ProviderResponse(
-                content="I need to echo text.",
-                tool_calls=[
-                    ToolCall(
-                        id="call_echo",
-                        name="echo_text",
-                        arguments={"text": "hello runtime"},
-                    )
-                ],
-            )
-
-        return ProviderResponse(final_answer="Echo completed.")
-
-
-def test_agent_runtime_executes_echo_text_tool() -> None:
+def test_agent_runtime_executes_echo_text_with_fake_provider() -> None:
     registry = ToolRegistry()
     registry.register(EchoTextTool())
 
     runtime = NativeAgentRuntime(
-        provider=EchoProvider(),
+        provider=FakeProvider(),
         tool_registry=registry,
         max_steps=3,
     )
 
-    result = runtime.run("echo hello runtime")
+    result = runtime.run("echo hello agent")
 
     assert result.stopped_reason == "completed"
-    assert result.final_answer == "Echo completed."
+    assert result.final_answer is not None
     assert len(result.tool_results) == 1
     assert result.tool_results[0].tool_name == "echo_text"
     assert result.tool_results[0].success is True
-    assert result.tool_results[0].payload["text"] == "hello runtime"
+    assert result.tool_results[0].payload["text"] == "hello agent"
+
+
+def test_agent_runtime_treats_empty_provider_response_as_error() -> None:
+    registry = ToolRegistry()
+    runtime = NativeAgentRuntime(
+        provider=EmptyResponseProvider(),
+        tool_registry=registry,
+        max_steps=3,
+    )
+
+    result = runtime.run("return empty response")
+
+    assert result.stopped_reason == "error"
+    assert result.final_answer is None
+    assert result.error_message == (
+        "Provider returned empty response without tool calls or final answer."
+    )

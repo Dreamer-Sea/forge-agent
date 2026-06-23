@@ -36,3 +36,19 @@ def test_fake_provider_returns_final_answer_after_observation() -> None:
     assert response.final_answer is not None
     assert "list_files" in response.final_answer
     assert "read_file" in response.final_answer
+
+
+def test_fake_provider_can_call_echo_text() -> None:
+    provider = FakeProvider()
+
+    response = provider.complete(
+        messages=[ModelMessage(role="user", content="echo hello agent")],
+        tools=[],
+    )
+
+    assert response.final_answer is None
+    assert response.has_tool_calls
+    assert len(response.tool_calls) == 1
+    assert response.tool_calls[0].id == "call_echo_text"
+    assert response.tool_calls[0].name == "echo_text"
+    assert response.tool_calls[0].arguments == {"text": "hello agent"}
