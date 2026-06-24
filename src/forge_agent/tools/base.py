@@ -22,6 +22,7 @@ class ToolResult(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
     error_code: str | None = None
     error_message: str | None = None
+    safe_detail: dict[str, Any] = Field(default_factory=dict)
 
 
 class Tool(Protocol):
