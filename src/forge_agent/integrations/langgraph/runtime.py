@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from forge_agent.integrations.langgraph.workflows import build_minimal_workflow
+from forge_agent.integrations.langgraph.workflows import build_rag_routing_workflow
 from forge_agent.runtime.base import RunConfig, RunResult
 
 
@@ -10,7 +10,7 @@ class LangGraphAgentRuntime:
     """Runtime adapter backed by a LangGraph workflow."""
 
     def __init__(self) -> None:
-        self._workflow = build_minimal_workflow()
+        self._workflow = build_rag_routing_workflow()
 
     def run(
         self,
