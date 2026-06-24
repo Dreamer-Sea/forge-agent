@@ -61,3 +61,41 @@ class PermissionDeniedError(ToolError):
             tool_name=tool_name,
             safe_detail=safe_detail,
         )
+
+
+class PathOutsideWorkspaceError(ToolError):
+    """Raised when a resolved path is outside the configured workspace."""
+
+    def __init__(
+        self,
+        *,
+        tool_name: str,
+        reason: str = "Resolved path is outside the workspace.",
+        safe_detail: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            error_code=PATH_OUTSIDE_WORKSPACE,
+            message="Path is outside the workspace.",
+            reason=reason,
+            tool_name=tool_name,
+            safe_detail=safe_detail,
+        )
+
+
+class PathTraversalBlockedError(ToolError):
+    """Raised when a user path contains traversal segments."""
+
+    def __init__(
+        self,
+        *,
+        tool_name: str,
+        reason: str = "Path traversal is not allowed.",
+        safe_detail: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(
+            error_code=PATH_TRAVERSAL_BLOCKED,
+            message="Path traversal is blocked.",
+            reason=reason,
+            tool_name=tool_name,
+            safe_detail=safe_detail,
+        )
