@@ -8,6 +8,7 @@ import typer
 from forge_agent.providers.fake import FakeProvider
 from forge_agent.rag.knowledge_base import KnowledgeBase
 from forge_agent.runtime.native_runtime import NativeAgentRuntime
+from forge_agent.security import ToolError, Workspace
 from forge_agent.tools.defaults import create_default_tool_registry
 
 app = typer.Typer(help="A minimal Agent Platform demo CLI.")
@@ -24,22 +25,34 @@ DEFAULT_KNOWLEDGE_BASE_PATH = Path("examples/knowledge_base")
 
 
 @app.command()
-@app.command()
 def run(
-        task: str,
-        knowledge_base: Annotated[
-            Path,
-            typer.Option(
-                "--knowledge-base",
-                "-k",
-                help="Path to a local Markdown knowledge base.",
-            ),
-        ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+    task: str,
+    knowledge_base: Annotated[
+        Path,
+        typer.Option(
+            "--knowledge-base",
+            "-k",
+            help="Path to a local Markdown knowledge base.",
+        ),
+    ] = DEFAULT_KNOWLEDGE_BASE_PATH,
 ) -> None:
     """Run one agent task."""
 
-    local_knowledge_base = _load_knowledge_base_if_exists(knowledge_base)
-    registry = create_default_tool_registry(knowledge_base=local_knowledge_base)
+    workspace = Workspace(Path.cwd())
+    local_knowledge_base = _load_knowledge_base_if_exists(
+        knowledge_base,
+        workspace=workspace,
+    )
+    safe_knowledge_base_path = _safe_path_if_inside(
+        knowledge_base,
+        workspace=workspace,
+    )
+
+    registry = create_default_tool_registry(
+        knowledge_base=local_knowledge_base,
+        workspace=workspace,
+        safe_knowledge_base_path=safe_knowledge_base_path,
+    )
     runtime = NativeAgentRuntime(
         provider=FakeProvider(),
         tool_registry=registry,
@@ -75,9 +88,37 @@ def run(
 def rag_index(path: Path) -> None:
     """Index a local Markdown knowledge base."""
 
-    knowledge_base = KnowledgeBase.from_directory(path)
+    workspace = Workspace(Path.cwd())
 
-    typer.echo(f"Knowledge base: {path}")
+    try:
+        resolved_path = workspace.resolve_user_path(
+            path,
+            tool_name="rag_index",
+        )
+    except ToolError as error:
+        typer.echo(f"Error: {error.message}", err=True)
+        typer.echo(f"Reason: {error.reason}", err=True)
+        typer.echo(f"Code: {error.error_code}", err=True)
+        raise typer.Exit(code=1) from error
+
+    if not resolved_path.exists():
+        typer.echo(
+            f"Error: Path does not exist: {workspace.safe_display(resolved_path)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    if not resolved_path.is_dir():
+        typer.echo(
+            f"Error: Path is not a directory: {workspace.safe_display(resolved_path)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    knowledge_base = KnowledgeBase.from_directory(resolved_path)
+    safe_path = workspace.safe_display(resolved_path)
+
+    typer.echo(f"Knowledge base: {safe_path}")
     typer.echo(f"Documents: {len(knowledge_base.index.documents)}")
     typer.echo(f"Chunks: {len(knowledge_base.index.chunks)}")
     typer.echo("")
@@ -89,14 +130,42 @@ def rag_index(path: Path) -> None:
         )
 
 
-def _load_knowledge_base_if_exists(path: Path) -> KnowledgeBase | None:
-    if not path.exists():
+def _load_knowledge_base_if_exists(
+    path: Path,
+    *,
+    workspace: Workspace,
+) -> KnowledgeBase | None:
+    try:
+        resolved_path = workspace.resolve_user_path(
+            path,
+            tool_name="knowledge_base",
+        )
+    except ToolError:
         return None
 
-    if not path.is_dir():
+    if not resolved_path.exists():
         return None
 
-    return KnowledgeBase.from_directory(path)
+    if not resolved_path.is_dir():
+        return None
+
+    return KnowledgeBase.from_directory(resolved_path)
+
+
+def _safe_path_if_inside(
+    path: Path,
+    *,
+    workspace: Workspace,
+) -> str | None:
+    try:
+        resolved_path = workspace.resolve_user_path(
+            path,
+            tool_name="knowledge_base",
+        )
+    except ToolError:
+        return None
+
+    return workspace.safe_display(resolved_path)
 
 
 def main() -> None:

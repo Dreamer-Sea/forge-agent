@@ -5,6 +5,7 @@ from pathlib import Path
 from forge_agent.providers.fake import FakeProvider
 from forge_agent.rag.knowledge_base import KnowledgeBase
 from forge_agent.runtime.native_runtime import NativeAgentRuntime
+from forge_agent.security import PermissionAction, PermissionDecision, PermissionPolicy, Workspace
 from forge_agent.tools.defaults import create_default_tool_registry
 from forge_agent.tools.rag_tool import SearchKnowledgeBaseTool
 
@@ -69,7 +70,10 @@ def test_agent_runtime_can_call_rag_tool(tmp_path: Path) -> None:
     write_knowledge_base(tmp_path)
 
     knowledge_base = KnowledgeBase.from_directory(tmp_path)
-    registry = create_default_tool_registry(knowledge_base=knowledge_base)
+    registry = create_default_tool_registry(
+        knowledge_base=knowledge_base,
+        safe_knowledge_base_path=".",
+    )
     runtime = NativeAgentRuntime(
         provider=FakeProvider(),
         tool_registry=registry,
@@ -91,7 +95,10 @@ def test_rag_trace_contains_query_and_sources(tmp_path: Path) -> None:
     write_knowledge_base(tmp_path)
 
     knowledge_base = KnowledgeBase.from_directory(tmp_path)
-    registry = create_default_tool_registry(knowledge_base=knowledge_base)
+    registry = create_default_tool_registry(
+        knowledge_base=knowledge_base,
+        safe_knowledge_base_path=".",
+    )
     runtime = NativeAgentRuntime(
         provider=FakeProvider(),
         tool_registry=registry,
@@ -104,13 +111,13 @@ def test_rag_trace_contains_query_and_sources(tmp_path: Path) -> None:
         event
         for event in result.trace_events
         if event.event_type == "tool_call"
-        and event.data["tool_name"] == "search_knowledge_base"
+           and event.data["tool_name"] == "search_knowledge_base"
     ]
     tool_result_events = [
         event
         for event in result.trace_events
         if event.event_type == "tool_result"
-        and event.data["tool_name"] == "search_knowledge_base"
+           and event.data["tool_name"] == "search_knowledge_base"
     ]
 
     assert tool_call_events
@@ -121,3 +128,89 @@ def test_rag_trace_contains_query_and_sources(tmp_path: Path) -> None:
     assert tool_result_events
     payload = tool_result_events[0].data["payload"]
     assert payload["citations"][0]["source"] == "agent-runtime.md"
+
+
+def test_search_kb_tool_uses_allowed_index_path(tmp_path: Path) -> None:
+    write_knowledge_base(tmp_path)
+
+    knowledge_base = KnowledgeBase.from_directory(tmp_path)
+    tool = SearchKnowledgeBaseTool(
+        knowledge_base,
+        safe_index_path="knowledge_base",
+    )
+
+    result = tool.execute(
+        {
+            "query": "Agent Runtime",
+            "top_k": 2,
+        }
+    )
+
+    assert result.success is True
+    assert result.payload["index_path"] == "knowledge_base"
+
+
+def test_search_kb_tool_checks_permission_policy(tmp_path: Path) -> None:
+    class DenySearchPolicy(PermissionPolicy):
+        def check(self, action: PermissionAction) -> PermissionDecision:
+            decision = super().check(action)
+            if action is PermissionAction.SEARCH_KB:
+                return PermissionDecision.deny(
+                    action=action,
+                    reason="Knowledge base search is disabled for this test.",
+                    policy_name="deny-search-test",
+                )
+            return decision
+
+    write_knowledge_base(tmp_path)
+
+    knowledge_base = KnowledgeBase.from_directory(tmp_path)
+    tool = SearchKnowledgeBaseTool(
+        knowledge_base,
+        permission_policy=DenySearchPolicy(),
+        safe_index_path="knowledge_base",
+    )
+
+    result = tool.execute(
+        {
+            "query": "Agent Runtime",
+            "top_k": 2,
+        },
+        tool_call_id="call_search_knowledge_base",
+    )
+
+    assert result.success is False
+    assert result.tool_name == "search_knowledge_base"
+    assert result.tool_call_id == "call_search_knowledge_base"
+    assert result.error_code == "PERMISSION_DENIED"
+    assert result.error_message == "Permission denied."
+    assert result.payload == {
+        "reason": "Knowledge base search is disabled for this test."
+    }
+    assert result.safe_detail == {
+        "action": "search_kb",
+        "index_path": "knowledge_base",
+    }
+
+
+def test_rag_index_path_must_be_inside_workspace(tmp_path: Path) -> None:
+    workspace_root = tmp_path / "project"
+    workspace_root.mkdir()
+    outside_kb = tmp_path / "outside_kb"
+    outside_kb.mkdir()
+
+    workspace = Workspace(workspace_root)
+
+    result = workspace.resolve_user_path(
+        "knowledge_base",
+        tool_name="rag_index",
+    )
+
+    assert result == (workspace_root / "knowledge_base").resolve()
+
+    try:
+        workspace.resolve_user_path(outside_kb, tool_name="rag_index")
+    except Exception as error:
+        assert error.__class__.__name__ == "PathOutsideWorkspaceError"
+    else:
+        raise AssertionError("outside knowledge base path should be denied")

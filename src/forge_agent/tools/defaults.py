@@ -13,6 +13,7 @@ def create_default_tool_registry(
     knowledge_base: KnowledgeBase | None = None,
     workspace: Workspace | None = None,
     permission_policy: PermissionPolicy | None = None,
+    safe_knowledge_base_path: str | None = None,
 ) -> ToolRegistry:
     """Create the default tool registry."""
 
@@ -39,6 +40,12 @@ def create_default_tool_registry(
     registry.register(EchoTextTool())
 
     if knowledge_base is not None:
-        registry.register(SearchKnowledgeBaseTool(knowledge_base))
+        registry.register(
+            SearchKnowledgeBaseTool(
+                knowledge_base,
+                permission_policy=permission_policy,
+                safe_index_path=safe_knowledge_base_path,
+            )
+        )
 
     return registry
