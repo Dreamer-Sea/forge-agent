@@ -1,16 +1,36 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from forge_agent.providers.base import ModelMessage, ModelProvider
 from forge_agent.runtime.events import TraceEvent
 from forge_agent.runtime.state import AgentState
+from forge_agent.security import (
+    PATH_OUTSIDE_WORKSPACE,
+    PATH_TRAVERSAL_BLOCKED,
+    PERMISSION_DENIED,
+)
 from forge_agent.tools.base import ToolResult
 from forge_agent.tools.registry import ToolRegistry
 
 StoppedReason = Literal["completed", "max_steps", "error"]
+
+SECURITY_DENIAL_ERROR_CODES = {
+    PERMISSION_DENIED,
+    PATH_OUTSIDE_WORKSPACE,
+    PATH_TRAVERSAL_BLOCKED,
+}
+
+PATH_ARGUMENT_KEYS = {
+    "path",
+    "file_path",
+    "directory",
+    "workspace",
+    "knowledge_base",
+    "knowledge_base_path",
+}
 
 
 class AgentRunResult(BaseModel):
@@ -93,7 +113,8 @@ class NativeAgentRuntime:
                 if not response.has_tool_calls:
                     if response.content is None:
                         error_message = (
-                            "Provider returned empty response without tool calls or final answer."
+                            "Provider returned empty response without tool calls "
+                            "or final answer."
                         )
 
                         state.trace_events.append(
@@ -140,6 +161,8 @@ class NativeAgentRuntime:
                     )
 
                 for tool_call in response.tool_calls:
+                    safe_arguments = _sanitize_trace_arguments(tool_call.arguments)
+
                     state.trace_events.append(
                         TraceEvent(
                             event_type="tool_call",
@@ -147,7 +170,19 @@ class NativeAgentRuntime:
                             data={
                                 "tool_call_id": tool_call.id,
                                 "tool_name": tool_call.name,
-                                "arguments": tool_call.arguments,
+                                "arguments": safe_arguments,
+                            },
+                        )
+                    )
+
+                    state.trace_events.append(
+                        TraceEvent(
+                            event_type="permission_check",
+                            step=step,
+                            data={
+                                "tool_call_id": tool_call.id,
+                                "tool_name": tool_call.name,
+                                "arguments": safe_arguments,
                             },
                         )
                     )
@@ -177,9 +212,25 @@ class NativeAgentRuntime:
                                 "success": tool_result.success,
                                 "error_code": tool_result.error_code,
                                 "payload": tool_result.payload,
+                                "safe_detail": tool_result.safe_detail,
                             },
                         )
                     )
+
+                    if _is_security_denial(tool_result):
+                        state.trace_events.append(
+                            TraceEvent(
+                                event_type="permission_denied",
+                                step=step,
+                                data={
+                                    "tool_call_id": tool_call.id,
+                                    "tool_name": tool_result.tool_name,
+                                    "error_code": tool_result.error_code,
+                                    "reason": tool_result.payload.get("reason"),
+                                    "safe_detail": tool_result.safe_detail,
+                                },
+                            )
+                        )
 
             state.trace_events.append(
                 TraceEvent(
@@ -214,3 +265,39 @@ class NativeAgentRuntime:
                 trace_events=list(state.trace_events),
                 error_message=str(error),
             )
+
+
+def _is_security_denial(tool_result: ToolResult) -> bool:
+    return tool_result.error_code in SECURITY_DENIAL_ERROR_CODES
+
+
+def _sanitize_trace_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Redact sensitive path-like arguments before writing trace events."""
+    sanitized: dict[str, Any] = {}
+
+    for key, value in arguments.items():
+        if key in PATH_ARGUMENT_KEYS and isinstance(value, str):
+            sanitized[key] = _sanitize_path_argument(value)
+        else:
+            sanitized[key] = value
+
+    return sanitized
+
+
+def _sanitize_path_argument(value: str) -> str:
+    if _looks_like_sensitive_absolute_path(value):
+        return "<redacted-path>"
+
+    return value
+
+
+def _looks_like_sensitive_absolute_path(value: str) -> bool:
+    return (
+        value.startswith("/")
+        or value.startswith("~")
+        or _looks_like_windows_absolute_path(value)
+    )
+
+
+def _looks_like_windows_absolute_path(value: str) -> bool:
+    return len(value) >= 3 and value[1] == ":" and value[2] in {"\\", "/"}

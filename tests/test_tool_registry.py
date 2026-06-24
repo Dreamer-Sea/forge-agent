@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from forge_agent.security import Workspace
 from forge_agent.tools.calculator import CalculatorTool
 from forge_agent.tools.file_tools import ListFilesTool, ReadFileTool
 from forge_agent.tools.registry import ToolRegistry
@@ -56,21 +57,23 @@ def test_list_files_tool_lists_directory(tmp_path: Path) -> None:
     readme = tmp_path / "README.md"
     readme.write_text("# forge-agent", encoding="utf-8")
 
-    tool = ListFilesTool()
-    result = tool.execute(arguments={"path": str(tmp_path)})
+    tool = ListFilesTool(workspace=Workspace(tmp_path))
+    result = tool.execute(arguments={"path": "."})
 
     assert result.success is True
-    assert "README.md" in result.payload["files"]
+    assert result.payload["path"] == "."
+    assert result.payload["files"] == ["README.md"]
 
 
 def test_read_file_tool_reads_file(tmp_path: Path) -> None:
     readme = tmp_path / "README.md"
     readme.write_text("# forge-agent", encoding="utf-8")
 
-    tool = ReadFileTool()
-    result = tool.execute(arguments={"path": str(readme)})
+    tool = ReadFileTool(workspace=Workspace(tmp_path))
+    result = tool.execute(arguments={"path": "README.md"})
 
     assert result.success is True
+    assert result.payload["path"] == "README.md"
     assert result.payload["content"] == "# forge-agent"
 
 

@@ -9,7 +9,9 @@ TraceEventType = Literal[
     "model_call",
     "model_response",
     "tool_call",
+    "permission_check",
     "tool_result",
+    "permission_denied",
     "final_answer",
     "runtime_stop",
 ]
