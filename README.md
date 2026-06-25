@@ -984,3 +984,29 @@ What this demonstrates:
 - The runtime can execute tools through the tool registry.
 - File tools can read project files inside the configured workspace.
 - The final answer is produced from tool-observed project context.
+
+## Demo 2: RAG + Citation
+
+This demo shows the agent using a local Markdown knowledge base to answer a grounded question with source information.
+
+Commands:
+
+    uv run forge rag index examples/knowledge_base
+    uv run forge run "According to the knowledge base, how does the permission system work?"
+
+Expected output summary:
+
+    runtime: native
+    tools_used: search_knowledge_base
+    stopped_reason: completed
+    final_answer: <answer grounded in examples/knowledge_base/security.md>
+    Citations:
+    - [source: security.md#Security > Permission System ...]
+
+What this demonstrates:
+
+- Markdown documents can be indexed as a local knowledge base.
+- The agent can call the knowledge-base search tool.
+- The final answer is grounded in retrieved context.
+- The answer includes source information so reviewers can verify it.
+- Retrieval and tool execution are visible through trace events.
