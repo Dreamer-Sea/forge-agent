@@ -75,13 +75,17 @@ def run(
 
     result = runtime.run(task)
 
-    typer.echo(f"Runtime: {selected_runtime}")
-    typer.echo(f"Final answer: {result.final_answer or ''}")
-    typer.echo(f"Stopped reason: {result.stopped_reason}")
-    typer.echo(f"Steps: {result.steps}")
+    tool_names = [tool_result.tool_name for tool_result in result.tool_results]
+    tools_used = ", ".join(dict.fromkeys(tool_names)) if tool_names else "none"
+
+    typer.echo(f"runtime: {selected_runtime}")
+    typer.echo(f"tools_used: {tools_used}")
+    typer.echo(f"stopped_reason: {result.stopped_reason}")
+    typer.echo(f"final_answer: {result.final_answer or ''}")
+    typer.echo(f"steps: {result.steps}")
 
     if result.error_message is not None:
-        typer.echo(f"Error: {result.error_message}")
+        typer.echo(f"error: {result.error_message}")
 
     typer.echo("")
     typer.echo("Tool calls:")

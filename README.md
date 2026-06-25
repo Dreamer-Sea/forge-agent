@@ -962,3 +962,25 @@ Planned stages:
 ## License
 
 This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE) for details.
+
+## Demo 1: Tool Calling
+
+This demo shows the native agent runtime executing file tools through the tool registry.
+
+Command:
+
+    uv run forge run "Read the project README and summarize the architecture."
+
+Expected output summary:
+
+    runtime: native
+    tools_used: list_files, read_file
+    stopped_reason: completed
+    final_answer: <architecture summary based on README.md>
+
+What this demonstrates:
+
+- The CLI can dispatch a natural-language task to the agent runtime.
+- The runtime can execute tools through the tool registry.
+- File tools can read project files inside the configured workspace.
+- The final answer is produced from tool-observed project context.
