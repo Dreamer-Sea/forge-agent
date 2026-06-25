@@ -5,11 +5,14 @@ from typing import Annotated
 
 import typer
 
+from forge_agent.integrations.langgraph import LangGraphAgentRuntime
 from forge_agent.providers.fake import FakeProvider
 from forge_agent.rag.knowledge_base import KnowledgeBase
+from forge_agent.runtime import RuntimeName
 from forge_agent.runtime.native_runtime import NativeAgentRuntime
 from forge_agent.security import ToolError, Workspace
 from forge_agent.tools.defaults import create_default_tool_registry
+from forge_agent.tools.registry import ToolRegistry
 
 app = typer.Typer(help="A minimal Agent Platform demo CLI.")
 rag_app = typer.Typer(help="RAG commands.")
@@ -35,8 +38,17 @@ def run(
             help="Path to a local Markdown knowledge base.",
         ),
     ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+    runtime_name: Annotated[
+        str,
+        typer.Option(
+            "--runtime",
+            help="Runtime backend to use: native or langgraph.",
+        ),
+    ] = "native",
 ) -> None:
     """Run one agent task."""
+
+    selected_runtime = _validate_runtime_name(runtime_name)
 
     workspace = Workspace(Path.cwd())
     local_knowledge_base = _load_knowledge_base_if_exists(
@@ -53,14 +65,14 @@ def run(
         workspace=workspace,
         safe_knowledge_base_path=safe_knowledge_base_path,
     )
-    runtime = NativeAgentRuntime(
-        provider=FakeProvider(),
-        tool_registry=registry,
-        max_steps=5,
+    runtime = _create_runtime(
+        runtime_name=selected_runtime,
+        registry=registry,
     )
 
     result = runtime.run(task)
 
+    typer.echo(f"Runtime: {selected_runtime}")
     typer.echo(f"Final answer: {result.final_answer or ''}")
     typer.echo(f"Stopped reason: {result.stopped_reason}")
     typer.echo(f"Steps: {result.steps}")
@@ -128,6 +140,36 @@ def rag_index(path: Path) -> None:
         typer.echo(
             f"- {document.metadata.relative_path}: {document.metadata.title}"
         )
+
+
+def _create_runtime(
+    *,
+    runtime_name: RuntimeName,
+    registry: ToolRegistry,
+) -> NativeAgentRuntime | LangGraphAgentRuntime:
+    if runtime_name == "native":
+        return NativeAgentRuntime(
+            provider=FakeProvider(),
+            tool_registry=registry,
+            max_steps=5,
+        )
+
+    return LangGraphAgentRuntime(tool_registry=registry)
+
+
+def _validate_runtime_name(runtime_name: str) -> RuntimeName:
+    normalized = runtime_name.strip().lower()
+
+    if normalized == "native":
+        return "native"
+
+    if normalized == "langgraph":
+        return "langgraph"
+
+    raise typer.BadParameter(
+        f"Unknown runtime: {runtime_name}. Supported runtimes: native, langgraph.",
+        param_hint="--runtime",
+    )
 
 
 def _load_knowledge_base_if_exists(

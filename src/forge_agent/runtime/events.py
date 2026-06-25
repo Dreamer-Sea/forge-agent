@@ -14,6 +14,8 @@ TraceEventType = Literal[
     "permission_denied",
     "final_answer",
     "runtime_stop",
+    "workflow_node",
+    "workflow_route",
 ]
 
 

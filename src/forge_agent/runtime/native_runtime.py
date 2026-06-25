@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Literal
-
-from pydantic import BaseModel, Field
+from typing import Any
 
 from forge_agent.providers.base import ModelMessage, ModelProvider
+from forge_agent.runtime.base import RunConfig, RunResult
 from forge_agent.runtime.events import TraceEvent
 from forge_agent.runtime.state import AgentState
 from forge_agent.security import (
@@ -14,8 +13,6 @@ from forge_agent.security import (
 )
 from forge_agent.tools.base import ToolResult
 from forge_agent.tools.registry import ToolRegistry
-
-StoppedReason = Literal["completed", "max_steps", "error"]
 
 SECURITY_DENIAL_ERROR_CODES = {
     PERMISSION_DENIED,
@@ -33,15 +30,8 @@ PATH_ARGUMENT_KEYS = {
 }
 
 
-class AgentRunResult(BaseModel):
-    """Structured result returned by an agent runtime run."""
-
-    final_answer: str | None
-    stopped_reason: StoppedReason
-    steps: int
-    tool_results: list[ToolResult] = Field(default_factory=list)
-    trace_events: list[TraceEvent] = Field(default_factory=list)
-    error_message: str | None = None
+class AgentRunResult(RunResult):
+    """Backward-compatible result returned by the native runtime."""
 
 
 class NativeAgentRuntime:
@@ -57,12 +47,17 @@ class NativeAgentRuntime:
         self._tool_registry = tool_registry
         self._max_steps = max_steps
 
-    def run(self, user_input: str) -> AgentRunResult:
+    def run(
+        self,
+        user_input: str,
+        config: RunConfig | None = None,
+    ) -> AgentRunResult:
+        max_steps = config.max_steps if config is not None else self._max_steps
         state = AgentState(user_input=user_input)
         state.messages.append(ModelMessage(role="user", content=user_input))
 
         try:
-            for step in range(self._max_steps):
+            for step in range(max_steps):
                 state.step_index = step
 
                 state.trace_events.append(
@@ -235,7 +230,7 @@ class NativeAgentRuntime:
             state.trace_events.append(
                 TraceEvent(
                     event_type="runtime_stop",
-                    step=self._max_steps,
+                    step=max_steps,
                     data={"reason": "max_steps"},
                 )
             )
@@ -243,7 +238,7 @@ class NativeAgentRuntime:
             return AgentRunResult(
                 final_answer=None,
                 stopped_reason="max_steps",
-                steps=self._max_steps,
+                steps=max_steps,
                 tool_results=list(state.tool_results),
                 trace_events=list(state.trace_events),
             )
