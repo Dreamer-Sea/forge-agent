@@ -12,6 +12,7 @@ from forge_agent.evals.runner import (
     EvalRunOutput,
     EvalSuiteResult,
 )
+from forge_agent.evals.runtime_executor import RuntimeEvalExecutor
 
 __all__ = [
     "EvalCase",
@@ -26,4 +27,5 @@ __all__ = [
     "EvalRunOutput",
     "EvalRunner",
     "EvalSuiteResult",
+    "RuntimeEvalExecutor",
 ]
