@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
+from forge_agent.evals import EvalDataset, EvalReport, EvalRunner, RuntimeEvalExecutor
 from forge_agent.integrations.langgraph import LangGraphAgentRuntime
+from forge_agent.observability import JsonlTraceExporter
 from forge_agent.providers.fake import FakeProvider
 from forge_agent.rag.knowledge_base import KnowledgeBase
 from forge_agent.runtime import RuntimeName
@@ -29,22 +32,22 @@ DEFAULT_KNOWLEDGE_BASE_PATH = Path("examples/knowledge_base")
 
 @app.command()
 def run(
-    task: str,
-    knowledge_base: Annotated[
-        Path,
-        typer.Option(
-            "--knowledge-base",
-            "-k",
-            help="Path to a local Markdown knowledge base.",
-        ),
-    ] = DEFAULT_KNOWLEDGE_BASE_PATH,
-    runtime_name: Annotated[
-        str,
-        typer.Option(
-            "--runtime",
-            help="Runtime backend to use: native or langgraph.",
-        ),
-    ] = "native",
+        task: str,
+        knowledge_base: Annotated[
+            Path,
+            typer.Option(
+                "--knowledge-base",
+                "-k",
+                help="Path to a local Markdown knowledge base.",
+            ),
+        ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+        runtime_name: Annotated[
+            str,
+            typer.Option(
+                "--runtime",
+                help="Runtime backend to use: native or langgraph.",
+            ),
+        ] = "native",
 ) -> None:
     """Run one agent task."""
 
@@ -96,6 +99,113 @@ def run(
         typer.echo(f"- {event.event_type}")
 
 
+@app.command("eval")
+def eval_command(
+        dataset_path: Annotated[
+            Path,
+            typer.Argument(help="Path to a JSONL eval dataset."),
+        ],
+        knowledge_base: Annotated[
+            Path,
+            typer.Option(
+                "--knowledge-base",
+                "-k",
+                help="Path to a local Markdown knowledge base.",
+            ),
+        ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+        runtime_name: Annotated[
+            str,
+            typer.Option(
+                "--runtime",
+                help="Runtime backend to use: native or langgraph.",
+            ),
+        ] = "native",
+        output: Annotated[
+            Path,
+            typer.Option(
+                "--output",
+                help="Path to write the markdown eval report.",
+            ),
+        ] = Path("reports/eval-report.md"),
+        trace_out: Annotated[
+            Path,
+            typer.Option(
+                "--trace-out",
+                help="Path to write JSONL trace events.",
+            ),
+        ] = Path("reports/traces.jsonl"),
+        json_output: Annotated[
+            Path | None,
+            typer.Option(
+                "--json-output",
+                help="Optional path to write the JSON eval report.",
+            ),
+        ] = None,
+) -> None:
+    """Run deterministic agent evals from a JSONL dataset."""
+
+    selected_runtime = _validate_runtime_name(runtime_name)
+
+    try:
+        dataset = EvalDataset.load_jsonl(dataset_path)
+    except ValueError as error:
+        typer.echo(f"Error: {error}", err=True)
+        raise typer.Exit(code=1) from error
+
+    workspace = Workspace(Path.cwd())
+    local_knowledge_base = _load_knowledge_base_if_exists(
+        knowledge_base,
+        workspace=workspace,
+    )
+    safe_knowledge_base_path = _safe_path_if_inside(
+        knowledge_base,
+        workspace=workspace,
+    )
+
+    registry = create_default_tool_registry(
+        knowledge_base=local_knowledge_base,
+        workspace=workspace,
+        safe_knowledge_base_path=safe_knowledge_base_path,
+    )
+    runtime = _create_runtime(
+        runtime_name=selected_runtime,
+        registry=registry,
+    )
+
+    executor = RuntimeEvalExecutor(
+        runtime=runtime,
+        runtime_name=selected_runtime,
+    )
+    suite = asyncio.run(EvalRunner(executor).run_dataset(dataset))
+
+    JsonlTraceExporter(trace_out).export(suite.trace_events)
+
+    report = EvalReport.from_suite(
+        suite,
+        trace_file=trace_out,
+    )
+    report.write_markdown(output)
+
+    if json_output is not None:
+        report.write_json(json_output)
+
+    metrics = report.metrics
+
+    typer.echo(f"case_count: {metrics.case_count}")
+    typer.echo(f"success_rate: {_format_cli_rate(metrics.success_rate)}")
+    typer.echo(
+        "tool_call_success_rate: "
+        f"{_format_cli_rate(metrics.tool_call_success_rate)}"
+    )
+    typer.echo(
+        "expected_contains_pass_rate: "
+        f"{_format_cli_rate(metrics.expected_contains_pass_rate)}"
+    )
+    typer.echo(f"failed_cases: {metrics.failed_case_count}")
+    typer.echo(f"trace_file: {trace_out}")
+    typer.echo(f"report_file: {output}")
+
+
 @rag_app.command("index")
 def rag_index(path: Path) -> None:
     """Index a local Markdown knowledge base."""
@@ -143,9 +253,9 @@ def rag_index(path: Path) -> None:
 
 
 def _create_runtime(
-    *,
-    runtime_name: RuntimeName,
-    registry: ToolRegistry,
+        *,
+        runtime_name: RuntimeName,
+        registry: ToolRegistry,
 ) -> NativeAgentRuntime | LangGraphAgentRuntime:
     if runtime_name == "native":
         return NativeAgentRuntime(
@@ -173,9 +283,9 @@ def _validate_runtime_name(runtime_name: str) -> RuntimeName:
 
 
 def _load_knowledge_base_if_exists(
-    path: Path,
-    *,
-    workspace: Workspace,
+        path: Path,
+        *,
+        workspace: Workspace,
 ) -> KnowledgeBase | None:
     try:
         resolved_path = workspace.resolve_user_path(
@@ -195,9 +305,9 @@ def _load_knowledge_base_if_exists(
 
 
 def _safe_path_if_inside(
-    path: Path,
-    *,
-    workspace: Workspace,
+        path: Path,
+        *,
+        workspace: Workspace,
 ) -> str | None:
     try:
         resolved_path = workspace.resolve_user_path(
@@ -208,6 +318,10 @@ def _safe_path_if_inside(
         return None
 
     return workspace.safe_display(resolved_path)
+
+
+def _format_cli_rate(value: float) -> str:
+    return f"{value:.2%}"
 
 
 def main() -> None:
