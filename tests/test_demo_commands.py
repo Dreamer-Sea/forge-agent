@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from forge_agent.cli.app import app
@@ -96,3 +98,49 @@ def test_demo_rag_trace_includes_search_tool() -> None:
     assert "Trace events:" in result.output
     assert "tool_call" in result.output
     assert "tool_result" in result.output
+
+def test_demo_eval_command_succeeds() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "examples/evals/agent_platform.jsonl",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "case_count: 3" in result.output
+    assert "success_rate: 100.00%" in result.output
+    assert "failed_cases: 0" in result.output
+
+
+def test_demo_eval_report_contains_success_rate() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "examples/evals/agent_platform.jsonl",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    report = Path("reports/eval-report.md")
+    assert report.exists()
+    assert "success_rate" in report.read_text(encoding="utf-8")
+
+
+def test_demo_eval_generates_trace_file() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "examples/evals/agent_platform.jsonl",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+
+    trace = Path("reports/traces.jsonl")
+    assert trace.exists()
+    assert trace.read_text(encoding="utf-8").strip()

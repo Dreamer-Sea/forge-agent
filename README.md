@@ -1010,3 +1010,29 @@ What this demonstrates:
 - The final answer is grounded in retrieved context.
 - The answer includes source information so reviewers can verify it.
 - Retrieval and tool execution are visible through trace events.
+
+## Demo 3: Eval + Trace
+
+This demo shows the quality loop for the agent platform.
+
+Command:
+
+    uv run forge eval examples/evals/agent_platform.jsonl
+
+Expected output summary:
+
+    case_count: 3
+    success_rate: 100.00%
+    tool_call_success_rate: 100.00%
+    expected_contains_pass_rate: 100.00%
+    failed_cases: 0
+    trace_file: reports/traces.jsonl
+    report_file: reports/eval-report.md
+
+What this demonstrates:
+
+- Agent behavior can be validated with JSONL eval cases.
+- Tool routing can be checked through expected tool calls.
+- Final answers can be checked with expected substrings.
+- Trace files make model calls, tool calls, permission checks, and final answers inspectable.
+- Eval reports provide a lightweight regression signal for future changes.

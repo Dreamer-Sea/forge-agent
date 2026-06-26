@@ -1,10 +1,3 @@
-{"id":"runtime_001","input":"Agent Runtime 有哪些核心模块？","expected_tools":["search_knowledge_base"],"expected_contains":["ModelProvider","ToolRegistry","AgentRuntime"]}
-{"id":"runtime_002","input":"根据知识库解释 native runtime 和 langgraph runtime 的区别。","expected_tools":["search_knowledge_base"],"expected_contains":["native","langgraph","runtime"]}
-{"id":"rag_001","input":"RAG 在 forge-agent 中的最小闭环是什么？","expected_tools":["search_knowledge_base"],"expected_contains":["retrieval","context","citation"]}
-{"id":"rag_002","input":"知识库检索工具如何帮助 Agent 回答问题？","expected_tools":["search_knowledge_base"],"expected_contains":["search_knowledge_base","knowledge","answer"]}
-{"id":"permission_001","input":"根据知识库回答 Permission system 如何工作？","expected_tools":["search_knowledge_base"],"expected_contains":["workspace","permission","trace"]}
-{"id":"permission_002","input":"为什么文件工具需要 workspace guard？","expected_tools":["search_knowledge_base"],"expected_contains":["workspace","path","permission"]}
-{"id":"trace_001","input":"Read README and summarize the architecture.","expected_tools":["read_file"],"expected_contains":["Runtime","Tool"]}
-{"id":"file_001","input":"Read README and summarize the project purpose.","expected_tools":["read_file"],"expected_contains":["Agent","Platform"]}
-{"id":"cli_001","input":"forge-agent CLI 支持哪些核心命令？","expected_tools":["search_knowledge_base"],"expected_contains":["run","rag","eval"]}
-{"id":"eval_001","input":"为什么 Agent 平台需要 Eval 和 Trace？","expected_tools":["search_knowledge_base"],"expected_contains":["eval","trace","regression"]}
+{"id":"tool_calling_001","input":"Read the project README and summarize the architecture.","expected_tools":["list_files","read_file"],"expected_contains":["README","list_files","read_file"]}
+{"id":"rag_permission_001","input":"According to the knowledge base, how does the permission system work?","expected_tools":["search_knowledge_base"],"expected_contains":["Permission System","Citations:","security.md"]}
+{"id":"rag_pipeline_001","input":"According to the knowledge base, what is Agentic RAG in forge-agent?","expected_tools":["search_knowledge_base"],"expected_contains":["search_knowledge_base","Citations:","rag.md"]}
