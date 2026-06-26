@@ -1036,3 +1036,125 @@ What this demonstrates:
 - Final answers can be checked with expected substrings.
 - Trace files make model calls, tool calls, permission checks, and final answers inspectable.
 - Eval reports provide a lightweight regression signal for future changes.
+
+## Project Overview
+
+`forge-agent` is a demo-level Agent Platform built as a local CLI application.
+
+It demonstrates the platform capabilities behind modern coding and knowledge agents:
+
+- Agent Runtime
+- Model Provider abstraction
+- Tool Registry
+- Local RAG with citations
+- Workspace permission checks
+- Trace events
+- JSONL evaluation
+
+The project is intentionally small enough to read, test, and explain in an interview, while still showing the architecture shape of a real agent platform.
+
+## Architecture
+
+The platform is organized around explicit boundaries:
+
+- CLI receives user tasks and demo commands.
+- Agent Runtime owns the agent loop.
+- Model Provider abstracts model interaction.
+- Tool Registry exposes executable capabilities.
+- Permission Policy protects tool execution.
+- RAG pipeline provides grounded local knowledge retrieval.
+- Trace Recorder makes each run inspectable.
+- Eval Runner validates behavior with JSONL cases.
+
+See `docs/architecture.md` for the detailed design.
+
+## Quick Start
+
+Install dependencies:
+
+    uv sync
+
+Show CLI help:
+
+    uv run forge --help
+
+Run all tests:
+
+    uv run pytest -q
+
+Run static checks:
+
+    uv run mypy src tests
+    uv run ruff check .
+
+## Demo Commands
+
+### Demo 1: Tool Calling
+
+    uv run forge run "Read the project README and summarize the architecture."
+
+Expected result:
+
+    runtime: native
+    tools_used: list_files, read_file
+    stopped_reason: completed
+    final_answer: <README-based answer>
+
+### Demo 2: RAG + Citation
+
+    uv run forge rag index examples/knowledge_base
+    uv run forge run "According to the knowledge base, how does the permission system work?"
+
+Expected result:
+
+    runtime: native
+    tools_used: search_knowledge_base
+    stopped_reason: completed
+    final_answer: <grounded answer with citations>
+
+### Demo 3: Eval + Trace
+
+    uv run forge eval examples/evals/agent_platform.jsonl
+
+Expected result:
+
+    case_count: 3
+    success_rate: 100.00%
+    tool_call_success_rate: 100.00%
+    expected_contains_pass_rate: 100.00%
+    failed_cases: 0
+    trace_file: reports/traces.jsonl
+    report_file: reports/eval-report.md
+
+## Design Decisions
+
+### Why a custom native runtime?
+
+A small native runtime makes the agent loop explicit and easy to inspect. It shows the mechanics of model calls, tool calls, permission checks, and traces without hiding them behind a framework.
+
+### Why also support LangGraph?
+
+LangGraph is useful for graph-style orchestration. Keeping it as an adapter demonstrates that the platform abstractions can support both native and framework-backed runtimes.
+
+### Why local Markdown RAG?
+
+Local Markdown keeps the demo reproducible. It avoids external embedding services and production vector databases while still showing document loading, retrieval, grounding, and citation.
+
+### Why deterministic eval?
+
+The project uses deterministic checks so demo behavior is stable in CI and during interviews.
+
+## Limitations
+
+This is a demo-level Agent Platform, not a production SaaS.
+
+Current limitations:
+
+- No Web UI.
+- No multi-tenant authentication.
+- No production vector database.
+- No Docker or OS-level sandbox.
+- No external observability backend.
+- No MCP marketplace.
+- No long-term memory system.
+- No production secret management.
