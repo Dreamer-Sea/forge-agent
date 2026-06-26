@@ -83,9 +83,7 @@ def test_langgraph_runtime_applies_permission_policy(tmp_path: Path) -> None:
     }
 
     permission_denied_events = [
-        event
-        for event in result.trace_events
-        if event.event_type == "permission_denied"
+        event for event in result.trace_events if event.event_type == "permission_denied"
     ]
     assert permission_denied_events
     assert permission_denied_events[0].data["reason"] == (

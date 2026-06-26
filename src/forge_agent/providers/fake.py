@@ -33,9 +33,7 @@ class FakeProvider:
 
         if tool_observations:
             rag_observations = [
-                message
-                for message in tool_observations
-                if message.name == "search_knowledge_base"
+                message for message in tool_observations if message.name == "search_knowledge_base"
             ]
 
             if rag_observations:
@@ -187,10 +185,7 @@ class FakeProvider:
                 f"Citations:\n{citation_text}"
             )
 
-        return (
-            "Based on the knowledge base, here is the grounded context:\n\n"
-            f"{context}"
-        )
+        return f"Based on the knowledge base, here is the grounded context:\n\n{context}"
 
     @staticmethod
     def _has_tool(tools: list[dict[str, Any]], tool_name: str) -> bool:

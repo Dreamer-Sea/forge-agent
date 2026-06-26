@@ -62,16 +62,14 @@ def test_chunker_keeps_code_block_together() -> None:
         "A tool call should be represented as structured data.\n\n"
         "```python\n"
         "def call_tool(name: str, arguments: dict[str, object]) -> object:\n"
-        "    return {\"tool\": name, \"arguments\": arguments}\n"
+        '    return {"tool": name, "arguments": arguments}\n'
         "```\n\n"
         "The runtime records the tool result after execution.\n"
     )
 
     chunks = MarkdownChunker(max_chars=80).chunk(document)
 
-    code_chunks = [
-        chunk for chunk in chunks if "def call_tool" in chunk.content
-    ]
+    code_chunks = [chunk for chunk in chunks if "def call_tool" in chunk.content]
 
     assert len(code_chunks) == 1
     assert "```python" in code_chunks[0].content

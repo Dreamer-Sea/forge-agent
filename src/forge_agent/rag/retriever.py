@@ -39,9 +39,7 @@ class KeywordRetriever:
         self._chunks = chunks
         self._default_top_k = default_top_k
         self._tokenized_chunks = [self._tokenize_chunk(chunk) for chunk in chunks]
-        self._term_frequencies = [
-            Counter(tokens) for tokens in self._tokenized_chunks
-        ]
+        self._term_frequencies = [Counter(tokens) for tokens in self._tokenized_chunks]
         self._doc_frequencies = self._build_doc_frequencies()
         self._avg_doc_len = self._calculate_avg_doc_len()
 
@@ -107,9 +105,7 @@ class KeywordRetriever:
 
             doc_frequency = self._doc_frequencies[token]
             idf = math.log(1 + (total_docs - doc_frequency + 0.5) / (doc_frequency + 0.5))
-            denominator = frequency + k1 * (
-                1 - b + b * doc_len / self._avg_doc_len
-            )
+            denominator = frequency + k1 * (1 - b + b * doc_len / self._avg_doc_len)
             score += idf * (frequency * (k1 + 1)) / denominator
 
         return score
@@ -179,7 +175,4 @@ def expand_query_tokens(query: str) -> list[str]:
 
 def tokenize(text: str) -> list[str]:
     """Tokenize English words, numbers, underscores, and CJK characters."""
-    return [
-        match.group(0).lower()
-        for match in _TOKEN_PATTERN.finditer(text)
-    ]
+    return [match.group(0).lower() for match in _TOKEN_PATTERN.finditer(text)]

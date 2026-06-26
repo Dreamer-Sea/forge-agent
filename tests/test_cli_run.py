@@ -30,6 +30,7 @@ def test_cli_run_executes_tool_calling_demo(
     assert "- tool_result" in result.stdout
     assert "- final_answer" in result.stdout
 
+
 def test_cli_run_with_native_runtime() -> None:
     from typer.testing import CliRunner
 

@@ -118,9 +118,7 @@ class MarkdownChunker:
                     flush_current_section()
 
                     level, title = heading
-                    heading_stack = [
-                        item for item in heading_stack if item[0] < level
-                    ]
+                    heading_stack = [item for item in heading_stack if item[0] < level]
                     heading_stack.append((level, title))
                     current_heading_path = tuple(
                         heading_title for _, heading_title in heading_stack
@@ -199,10 +197,7 @@ class MarkdownChunker:
 
     @classmethod
     def _has_meaningful_body(cls, lines: list[str]) -> bool:
-        return any(
-            line.strip() and cls._parse_heading(line) is None
-            for line in lines
-        )
+        return any(line.strip() and cls._parse_heading(line) is None for line in lines)
 
     @staticmethod
     def _parse_heading(line: str) -> tuple[int, str] | None:

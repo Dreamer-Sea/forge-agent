@@ -61,8 +61,9 @@ def test_rag_tool_returns_citations(tmp_path: Path) -> None:
     assert result.success
     assert result.payload["citations"]
     assert result.payload["citations"][0]["source"] == "security.md"
-    assert "[source: security.md#Security > Permission System" in (
-        result.payload["citations"][0]["citation"]
+    assert (
+        "[source: security.md#Security > Permission System"
+        in (result.payload["citations"][0]["citation"])
     )
 
 
@@ -110,20 +111,16 @@ def test_rag_trace_contains_query_and_sources(tmp_path: Path) -> None:
     tool_call_events = [
         event
         for event in result.trace_events
-        if event.event_type == "tool_call"
-           and event.data["tool_name"] == "search_knowledge_base"
+        if event.event_type == "tool_call" and event.data["tool_name"] == "search_knowledge_base"
     ]
     tool_result_events = [
         event
         for event in result.trace_events
-        if event.event_type == "tool_result"
-           and event.data["tool_name"] == "search_knowledge_base"
+        if event.event_type == "tool_result" and event.data["tool_name"] == "search_knowledge_base"
     ]
 
     assert tool_call_events
-    assert tool_call_events[0].data["arguments"]["query"] == (
-        "Agent Runtime 有哪些核心模块？"
-    )
+    assert tool_call_events[0].data["arguments"]["query"] == ("Agent Runtime 有哪些核心模块？")
 
     assert tool_result_events
     payload = tool_result_events[0].data["payload"]
@@ -184,9 +181,7 @@ def test_search_kb_tool_checks_permission_policy(tmp_path: Path) -> None:
     assert result.tool_call_id == "call_search_knowledge_base"
     assert result.error_code == "PERMISSION_DENIED"
     assert result.error_message == "Permission denied."
-    assert result.payload == {
-        "reason": "Knowledge base search is disabled for this test."
-    }
+    assert result.payload == {"reason": "Knowledge base search is disabled for this test."}
     assert result.safe_detail == {
         "action": "search_kb",
         "index_path": "knowledge_base",

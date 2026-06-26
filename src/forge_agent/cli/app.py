@@ -32,22 +32,22 @@ DEFAULT_KNOWLEDGE_BASE_PATH = Path("examples/knowledge_base")
 
 @app.command()
 def run(
-        task: str,
-        knowledge_base: Annotated[
-            Path,
-            typer.Option(
-                "--knowledge-base",
-                "-k",
-                help="Path to a local Markdown knowledge base.",
-            ),
-        ] = DEFAULT_KNOWLEDGE_BASE_PATH,
-        runtime_name: Annotated[
-            str,
-            typer.Option(
-                "--runtime",
-                help="Runtime backend to use: native or langgraph.",
-            ),
-        ] = "native",
+    task: str,
+    knowledge_base: Annotated[
+        Path,
+        typer.Option(
+            "--knowledge-base",
+            "-k",
+            help="Path to a local Markdown knowledge base.",
+        ),
+    ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+    runtime_name: Annotated[
+        str,
+        typer.Option(
+            "--runtime",
+            help="Runtime backend to use: native or langgraph.",
+        ),
+    ] = "native",
 ) -> None:
     """Run one agent task."""
 
@@ -105,46 +105,46 @@ def run(
 
 @app.command("eval")
 def eval_command(
-        dataset_path: Annotated[
-            Path,
-            typer.Argument(help="Path to a JSONL eval dataset."),
-        ],
-        knowledge_base: Annotated[
-            Path,
-            typer.Option(
-                "--knowledge-base",
-                "-k",
-                help="Path to a local Markdown knowledge base.",
-            ),
-        ] = DEFAULT_KNOWLEDGE_BASE_PATH,
-        runtime_name: Annotated[
-            str,
-            typer.Option(
-                "--runtime",
-                help="Runtime backend to use: native or langgraph.",
-            ),
-        ] = "native",
-        output: Annotated[
-            Path,
-            typer.Option(
-                "--output",
-                help="Path to write the markdown eval report.",
-            ),
-        ] = Path("reports/eval-report.md"),
-        trace_out: Annotated[
-            Path,
-            typer.Option(
-                "--trace-out",
-                help="Path to write JSONL trace events.",
-            ),
-        ] = Path("reports/traces.jsonl"),
-        json_output: Annotated[
-            Path | None,
-            typer.Option(
-                "--json-output",
-                help="Optional path to write the JSON eval report.",
-            ),
-        ] = None,
+    dataset_path: Annotated[
+        Path,
+        typer.Argument(help="Path to a JSONL eval dataset."),
+    ],
+    knowledge_base: Annotated[
+        Path,
+        typer.Option(
+            "--knowledge-base",
+            "-k",
+            help="Path to a local Markdown knowledge base.",
+        ),
+    ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+    runtime_name: Annotated[
+        str,
+        typer.Option(
+            "--runtime",
+            help="Runtime backend to use: native or langgraph.",
+        ),
+    ] = "native",
+    output: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            help="Path to write the markdown eval report.",
+        ),
+    ] = Path("reports/eval-report.md"),
+    trace_out: Annotated[
+        Path,
+        typer.Option(
+            "--trace-out",
+            help="Path to write JSONL trace events.",
+        ),
+    ] = Path("reports/traces.jsonl"),
+    json_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--json-output",
+            help="Optional path to write the JSON eval report.",
+        ),
+    ] = None,
 ) -> None:
     """Run deterministic agent evals from a JSONL dataset."""
 
@@ -197,13 +197,9 @@ def eval_command(
 
     typer.echo(f"case_count: {metrics.case_count}")
     typer.echo(f"success_rate: {_format_cli_rate(metrics.success_rate)}")
+    typer.echo(f"tool_call_success_rate: {_format_cli_rate(metrics.tool_call_success_rate)}")
     typer.echo(
-        "tool_call_success_rate: "
-        f"{_format_cli_rate(metrics.tool_call_success_rate)}"
-    )
-    typer.echo(
-        "expected_contains_pass_rate: "
-        f"{_format_cli_rate(metrics.expected_contains_pass_rate)}"
+        f"expected_contains_pass_rate: {_format_cli_rate(metrics.expected_contains_pass_rate)}"
     )
     typer.echo(f"failed_cases: {metrics.failed_case_count}")
     typer.echo(f"trace_file: {trace_out}")
@@ -251,15 +247,13 @@ def rag_index(path: Path) -> None:
     typer.echo("Sources:")
 
     for document in knowledge_base.index.documents:
-        typer.echo(
-            f"- {document.metadata.relative_path}: {document.metadata.title}"
-        )
+        typer.echo(f"- {document.metadata.relative_path}: {document.metadata.title}")
 
 
 def _create_runtime(
-        *,
-        runtime_name: RuntimeName,
-        registry: ToolRegistry,
+    *,
+    runtime_name: RuntimeName,
+    registry: ToolRegistry,
 ) -> NativeAgentRuntime | LangGraphAgentRuntime:
     if runtime_name == "native":
         return NativeAgentRuntime(
@@ -287,9 +281,9 @@ def _validate_runtime_name(runtime_name: str) -> RuntimeName:
 
 
 def _load_knowledge_base_if_exists(
-        path: Path,
-        *,
-        workspace: Workspace,
+    path: Path,
+    *,
+    workspace: Workspace,
 ) -> KnowledgeBase | None:
     try:
         resolved_path = workspace.resolve_user_path(
@@ -309,9 +303,9 @@ def _load_knowledge_base_if_exists(
 
 
 def _safe_path_if_inside(
-        path: Path,
-        *,
-        workspace: Workspace,
+    path: Path,
+    *,
+    workspace: Workspace,
 ) -> str | None:
     try:
         resolved_path = workspace.resolve_user_path(

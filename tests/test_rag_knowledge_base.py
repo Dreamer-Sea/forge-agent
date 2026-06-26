@@ -40,9 +40,7 @@ def test_knowledge_base_search_returns_grounded_context(tmp_path: Path) -> None:
 
     assert search.results
     assert search.results[0].chunk.metadata.relative_path == "agent-runtime.md"
-    assert "[source: agent-runtime.md#Agent Runtime > Components" in (
-        search.built_context.context
-    )
+    assert "[source: agent-runtime.md#Agent Runtime > Components" in (search.built_context.context)
     assert "Tool Registry" in search.built_context.context
 
 
@@ -69,9 +67,7 @@ def test_day2_evaluation_document_is_retrievable() -> None:
 
     search = knowledge_base.search("How does eval work?", top_k=3)
 
-    actual_top_3_sources = [
-        result.chunk.metadata.relative_path for result in search.results
-    ]
+    actual_top_3_sources = [result.chunk.metadata.relative_path for result in search.results]
 
     assert "evaluation.md" in actual_top_3_sources
     assert search.built_context.citations

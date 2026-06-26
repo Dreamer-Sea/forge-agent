@@ -65,9 +65,7 @@ def test_permission_check_is_recorded_in_trace(tmp_path: Path) -> None:
     result = runtime.run("read README")
 
     permission_check_events = [
-        event
-        for event in result.trace_events
-        if event.event_type == "permission_check"
+        event for event in result.trace_events if event.event_type == "permission_check"
     ]
 
     assert permission_check_events
@@ -97,9 +95,7 @@ def test_permission_denied_is_recorded_in_trace(tmp_path: Path) -> None:
     result = runtime.run("write notes")
 
     permission_denied_events = [
-        event
-        for event in result.trace_events
-        if event.event_type == "permission_denied"
+        event for event in result.trace_events if event.event_type == "permission_denied"
     ]
 
     assert permission_denied_events
@@ -128,17 +124,13 @@ def test_path_traversal_denial_is_recorded_in_trace(tmp_path: Path) -> None:
     result = runtime.run("try to read ../secret.txt")
 
     permission_denied_events = [
-        event
-        for event in result.trace_events
-        if event.event_type == "permission_denied"
+        event for event in result.trace_events if event.event_type == "permission_denied"
     ]
 
     assert permission_denied_events
     assert permission_denied_events[0].data["tool_name"] == "read_file"
     assert permission_denied_events[0].data["error_code"] == PATH_TRAVERSAL_BLOCKED
-    assert permission_denied_events[0].data["safe_detail"] == {
-        "path": "../secret.txt"
-    }
+    assert permission_denied_events[0].data["safe_detail"] == {"path": "../secret.txt"}
 
 
 def test_trace_does_not_expose_sensitive_absolute_path(tmp_path: Path) -> None:
@@ -171,13 +163,9 @@ def test_trace_does_not_expose_sensitive_absolute_path(tmp_path: Path) -> None:
     assert "<outside-workspace>" in trace_json
 
     permission_denied_events = [
-        event
-        for event in result.trace_events
-        if event.event_type == "permission_denied"
+        event for event in result.trace_events if event.event_type == "permission_denied"
     ]
 
     assert permission_denied_events
     assert permission_denied_events[0].data["error_code"] == PATH_OUTSIDE_WORKSPACE
-    assert permission_denied_events[0].data["safe_detail"] == {
-        "path": "<outside-workspace>"
-    }
+    assert permission_denied_events[0].data["safe_detail"] == {"path": "<outside-workspace>"}

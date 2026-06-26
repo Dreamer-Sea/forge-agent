@@ -108,8 +108,7 @@ class NativeAgentRuntime:
                 if not response.has_tool_calls:
                     if response.content is None:
                         error_message = (
-                            "Provider returned empty response without tool calls "
-                            "or final answer."
+                            "Provider returned empty response without tool calls or final answer."
                         )
 
                         state.trace_events.append(
@@ -151,9 +150,7 @@ class NativeAgentRuntime:
                     )
 
                 if response.content is not None:
-                    state.messages.append(
-                        ModelMessage(role="assistant", content=response.content)
-                    )
+                    state.messages.append(ModelMessage(role="assistant", content=response.content))
 
                 for tool_call in response.tool_calls:
                     safe_arguments = _sanitize_trace_arguments(tool_call.arguments)
@@ -288,9 +285,7 @@ def _sanitize_path_argument(value: str) -> str:
 
 def _looks_like_sensitive_absolute_path(value: str) -> bool:
     return (
-        value.startswith("/")
-        or value.startswith("~")
-        or _looks_like_windows_absolute_path(value)
+        value.startswith("/") or value.startswith("~") or _looks_like_windows_absolute_path(value)
     )
 
 

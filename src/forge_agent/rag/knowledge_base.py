@@ -62,11 +62,7 @@ class KnowledgeBase:
         chunker = MarkdownChunker(max_chars=chunk_max_chars)
 
         documents = loader.load_dir(directory)
-        chunks = [
-            chunk
-            for document in documents
-            for chunk in chunker.chunk(document)
-        ]
+        chunks = [chunk for document in documents for chunk in chunker.chunk(document)]
 
         index = KnowledgeBaseIndex(
             documents=tuple(documents),
