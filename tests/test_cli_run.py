@@ -21,9 +21,9 @@ def test_cli_run_executes_tool_calling_demo(
     result = runner.invoke(app, ["run", "list files and read README"])
 
     assert result.exit_code == 0
-    assert "Final answer:" in result.stdout
-    assert "Stopped reason: completed" in result.stdout
-    assert "Steps: 2" in result.stdout
+    assert "final_answer:" in result.stdout
+    assert "stopped_reason: completed" in result.stdout
+    assert "steps: 2" in result.stdout
     assert "- list_files: SUCCESS" in result.stdout
     assert "- read_file: SUCCESS" in result.stdout
     assert "- model_call" in result.stdout
@@ -46,8 +46,8 @@ def test_cli_run_with_native_runtime() -> None:
     )
 
     assert result.exit_code == 0
-    assert "Runtime: native" in result.output
-    assert "Stopped reason:" in result.output
+    assert "runtime: native" in result.output
+    assert "stopped_reason:" in result.output
 
 
 def test_cli_run_with_langgraph_runtime() -> None:
@@ -66,8 +66,8 @@ def test_cli_run_with_langgraph_runtime() -> None:
     )
 
     assert result.exit_code == 0
-    assert "Runtime: langgraph" in result.output
-    assert "Stopped reason: completed" in result.output
+    assert "runtime: langgraph" in result.output
+    assert "stopped_reason: completed" in result.output
     assert "Trace events:" in result.output
 
 

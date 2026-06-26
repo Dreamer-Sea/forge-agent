@@ -57,7 +57,7 @@ def test_cli_run_can_use_knowledge_base(
     )
 
     assert result.exit_code == 0, result.output
-    assert "Final answer:" in result.output
+    assert "final_answer:" in result.output
     assert "Agent Runtime includes Agent Loop" in result.output
     assert "- search_knowledge_base: SUCCESS" in result.output
 

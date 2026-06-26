@@ -962,3 +962,228 @@ Planned stages:
 ## License
 
 This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE) for details.
+
+## Demo 1: Tool Calling
+
+This demo shows the native agent runtime executing file tools through the tool registry.
+
+Command:
+
+    uv run forge run "Read the project README and summarize the architecture."
+
+Expected output summary:
+
+    runtime: native
+    tools_used: list_files, read_file
+    stopped_reason: completed
+    final_answer: <architecture summary based on README.md>
+
+What this demonstrates:
+
+- The CLI can dispatch a natural-language task to the agent runtime.
+- The runtime can execute tools through the tool registry.
+- File tools can read project files inside the configured workspace.
+- The final answer is produced from tool-observed project context.
+
+## Demo 2: RAG + Citation
+
+This demo shows the agent using a local Markdown knowledge base to answer a grounded question with source information.
+
+Commands:
+
+    uv run forge rag index examples/knowledge_base
+    uv run forge run "According to the knowledge base, how does the permission system work?"
+
+Expected output summary:
+
+    runtime: native
+    tools_used: search_knowledge_base
+    stopped_reason: completed
+    final_answer: <answer grounded in examples/knowledge_base/security.md>
+    Citations:
+    - [source: security.md#Security > Permission System ...]
+
+What this demonstrates:
+
+- Markdown documents can be indexed as a local knowledge base.
+- The agent can call the knowledge-base search tool.
+- The final answer is grounded in retrieved context.
+- The answer includes source information so reviewers can verify it.
+- Retrieval and tool execution are visible through trace events.
+
+## Demo 3: Eval + Trace
+
+This demo shows the quality loop for the agent platform.
+
+Command:
+
+    uv run forge eval examples/evals/agent_platform.jsonl
+
+Expected output summary:
+
+    case_count: 3
+    success_rate: 100.00%
+    tool_call_success_rate: 100.00%
+    expected_contains_pass_rate: 100.00%
+    failed_cases: 0
+    trace_file: reports/traces.jsonl
+    report_file: reports/eval-report.md
+
+What this demonstrates:
+
+- Agent behavior can be validated with JSONL eval cases.
+- Tool routing can be checked through expected tool calls.
+- Final answers can be checked with expected substrings.
+- Trace files make model calls, tool calls, permission checks, and final answers inspectable.
+- Eval reports provide a lightweight regression signal for future changes.
+
+## Project Overview
+
+`forge-agent` is a demo-level Agent Platform built as a local CLI application.
+
+It demonstrates the platform capabilities behind modern coding and knowledge agents:
+
+- Agent Runtime
+- Model Provider abstraction
+- Tool Registry
+- Local RAG with citations
+- Workspace permission checks
+- Trace events
+- JSONL evaluation
+
+The project is intentionally small enough to read, test, and explain in an interview, while still showing the architecture shape of a real agent platform.
+
+## Architecture
+
+The platform is organized around explicit boundaries:
+
+- CLI receives user tasks and demo commands.
+- Agent Runtime owns the agent loop.
+- Model Provider abstracts model interaction.
+- Tool Registry exposes executable capabilities.
+- Permission Policy protects tool execution.
+- RAG pipeline provides grounded local knowledge retrieval.
+- Trace Recorder makes each run inspectable.
+- Eval Runner validates behavior with JSONL cases.
+
+See `docs/architecture.md` for the detailed design.
+
+## Quick Start
+
+Install dependencies:
+
+    uv sync
+
+Show CLI help:
+
+    uv run forge --help
+
+Run all tests:
+
+    uv run pytest -q
+
+Run static checks:
+
+    uv run mypy src tests
+    uv run ruff check .
+
+## Demo Commands
+
+### Demo 1: Tool Calling
+
+    uv run forge run "Read the project README and summarize the architecture."
+
+Expected result:
+
+    runtime: native
+    tools_used: list_files, read_file
+    stopped_reason: completed
+    final_answer: <README-based answer>
+
+### Demo 2: RAG + Citation
+
+    uv run forge rag index examples/knowledge_base
+    uv run forge run "According to the knowledge base, how does the permission system work?"
+
+Expected result:
+
+    runtime: native
+    tools_used: search_knowledge_base
+    stopped_reason: completed
+    final_answer: <grounded answer with citations>
+
+### Demo 3: Eval + Trace
+
+    uv run forge eval examples/evals/agent_platform.jsonl
+
+Expected result:
+
+    case_count: 3
+    success_rate: 100.00%
+    tool_call_success_rate: 100.00%
+    expected_contains_pass_rate: 100.00%
+    failed_cases: 0
+    trace_file: reports/traces.jsonl
+    report_file: reports/eval-report.md
+
+## Design Decisions
+
+### Why a custom native runtime?
+
+A small native runtime makes the agent loop explicit and easy to inspect. It shows the mechanics of model calls, tool calls, permission checks, and traces without hiding them behind a framework.
+
+### Why also support LangGraph?
+
+LangGraph is useful for graph-style orchestration. Keeping it as an adapter demonstrates that the platform abstractions can support both native and framework-backed runtimes.
+
+### Why local Markdown RAG?
+
+Local Markdown keeps the demo reproducible. It avoids external embedding services and production vector databases while still showing document loading, retrieval, grounding, and citation.
+
+### Why deterministic eval?
+
+The project uses deterministic checks so demo behavior is stable in CI and during interviews.
+
+## Limitations
+
+This is a demo-level Agent Platform, not a production SaaS.
+
+Current limitations:
+
+- No Web UI.
+- No multi-tenant authentication.
+- No production vector database.
+- No Docker or OS-level sandbox.
+- No external observability backend.
+- No MCP marketplace.
+- No long-term memory system.
+- No production secret management.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    User[User] --> CLI[CLI]
+    CLI --> Runtime[Agent Runtime]
+
+    Runtime --> Provider[Model Provider]
+    Runtime --> Registry[Tool Registry]
+    Runtime --> Trace[Trace Recorder]
+
+    Registry --> FileTools[File Tools]
+    Registry --> RagTool[RAG Tool]
+    Registry --> UtilityTools[Utility Tools]
+
+    RagTool --> Retriever[Markdown Retriever]
+    Retriever --> KnowledgeBase[examples/knowledge_base]
+
+    Runtime --> Permission[Permission Policy]
+    Permission --> WorkspaceGuard[Workspace Guard]
+
+    Eval[Eval Runner] --> Runtime
+    Eval --> Reports[Reports and Traces]
+
+    Trace --> Reports
+```
+
+This diagram shows the Day 6 demo architecture: the CLI drives the runtime, the runtime talks to a model provider, tools are executed through the registry, permission checks protect workspace access, RAG is exposed as a tool, and eval produces reports and traces.
