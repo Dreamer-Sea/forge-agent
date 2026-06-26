@@ -122,10 +122,7 @@ def test_agent_runtime_handles_tool_error() -> None:
     result = runtime.run("list files and read README")
 
     assert result.stopped_reason == "completed"
-    assert any(
-        tool_result.error_code == "unknown_tool"
-        for tool_result in result.tool_results
-    )
+    assert any(tool_result.error_code == "unknown_tool" for tool_result in result.tool_results)
 
 
 def test_agent_runtime_returns_structured_result() -> None:

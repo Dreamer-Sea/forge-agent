@@ -5,11 +5,11 @@ from forge_agent.rag.retriever import KeywordRetriever, expand_query_tokens, tok
 
 
 def make_chunk(
-        *,
-        content: str,
-        relative_path: str,
-        heading_path: tuple[str, ...],
-        ordinal: int,
+    *,
+    content: str,
+    relative_path: str,
+    heading_path: tuple[str, ...],
+    ordinal: int,
 ) -> Chunk:
     source_id = f"markdown:{relative_path}"
 
@@ -39,10 +39,7 @@ def make_chunks() -> list[Chunk]:
             ordinal=0,
         ),
         make_chunk(
-            content=(
-                "RAG includes Loader, Chunker, Retriever, Context Builder, "
-                "and Citation."
-            ),
+            content=("RAG includes Loader, Chunker, Retriever, Context Builder, and Citation."),
             relative_path="rag.md",
             heading_path=("Retrieval Augmented Generation", "Components"),
             ordinal=0,

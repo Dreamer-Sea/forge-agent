@@ -42,10 +42,7 @@ class EvalReport(BaseModel):
             "",
             f"- case_count: {self.metrics.case_count}",
             f"- success_rate: {_format_rate(self.metrics.success_rate)}",
-            (
-                "- tool_call_success_rate: "
-                f"{_format_rate(self.metrics.tool_call_success_rate)}"
-            ),
+            (f"- tool_call_success_rate: {_format_rate(self.metrics.tool_call_success_rate)}"),
             (
                 "- expected_contains_pass_rate: "
                 f"{_format_rate(self.metrics.expected_contains_pass_rate)}"

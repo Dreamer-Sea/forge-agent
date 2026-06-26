@@ -159,9 +159,7 @@ class EvalRunner:
         recorder: TraceRecorder,
     ) -> EvalResult:
         observed_tools = _observed_tools(recorder.events)
-        missing_tools = [
-            tool for tool in case.expected_tools if tool not in observed_tools
-        ]
+        missing_tools = [tool for tool in case.expected_tools if tool not in observed_tools]
 
         missing_texts = [
             expected_text
@@ -176,9 +174,7 @@ class EvalRunner:
             }
         )
         missing_sources = [
-            source
-            for source in case.expected_sources
-            if source not in observed_sources
+            source for source in case.expected_sources if source not in observed_sources
         ]
 
         failure_reasons: list[EvalFailureReason] = []

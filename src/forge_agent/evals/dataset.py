@@ -78,9 +78,7 @@ class EvalDataset(BaseModel):
                     ) from exc
 
                 if not isinstance(payload, dict):
-                    raise EvalDatasetError(
-                        f"{dataset_path}:{line_number}: expected json object"
-                    )
+                    raise EvalDatasetError(f"{dataset_path}:{line_number}: expected json object")
 
                 try:
                     cases.append(EvalCase.model_validate(payload))

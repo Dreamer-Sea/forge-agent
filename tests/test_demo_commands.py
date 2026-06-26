@@ -99,6 +99,7 @@ def test_demo_rag_trace_includes_search_tool() -> None:
     assert "tool_call" in result.output
     assert "tool_result" in result.output
 
+
 def test_demo_eval_command_succeeds() -> None:
     result = runner.invoke(
         app,

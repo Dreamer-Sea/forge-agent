@@ -27,9 +27,7 @@ class MarkdownLoader:
             raise NotADirectoryError(f"Knowledge base path is not a directory: {root}")
 
         markdown_files = sorted(
-            path
-            for path in root.rglob("*")
-            if path.is_file() and self._is_markdown_file(path)
+            path for path in root.rglob("*") if path.is_file() and self._is_markdown_file(path)
         )
 
         return [self.load_file(path, root=root) for path in markdown_files]

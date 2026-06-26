@@ -25,6 +25,4 @@ class TraceEvent(BaseModel):
     event_type: TraceEventType
     step: int
     data: dict[str, Any] = Field(default_factory=dict)
-    timestamp: str = Field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

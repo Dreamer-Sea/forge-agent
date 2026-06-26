@@ -34,8 +34,7 @@ class SearchKnowledgeBaseTool:
 
     name = "search_knowledge_base"
     description = (
-        "Search the local Markdown knowledge base and return grounded context "
-        "with citations."
+        "Search the local Markdown knowledge base and return grounded context with citations."
     )
 
     def __init__(

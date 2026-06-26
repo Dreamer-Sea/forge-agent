@@ -319,7 +319,7 @@ def _extract_rag_query(user_input: str) -> str:
         "knowledge base",
     ):
         if query.casefold().startswith(prefix.casefold()):
-            query = query[len(prefix):].strip()
+            query = query[len(prefix) :].strip()
             break
 
     return query or user_input

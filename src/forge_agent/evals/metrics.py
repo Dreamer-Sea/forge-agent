@@ -27,19 +27,11 @@ class EvalMetrics(BaseModel):
         passed_case_count = sum(1 for result in suite.results if result.passed)
         failed_case_count = case_count - passed_case_count
 
-        expected_tool_count = sum(
-            len(result.expected_tools) for result in suite.results
-        )
-        missing_tool_count = sum(
-            len(result.missing_expected_tools) for result in suite.results
-        )
+        expected_tool_count = sum(len(result.expected_tools) for result in suite.results)
+        missing_tool_count = sum(len(result.missing_expected_tools) for result in suite.results)
 
-        expected_text_count = sum(
-            len(result.expected_contains) for result in suite.results
-        )
-        missing_text_count = sum(
-            len(result.missing_expected_texts) for result in suite.results
-        )
+        expected_text_count = sum(len(result.expected_contains) for result in suite.results)
+        missing_text_count = sum(len(result.missing_expected_texts) for result in suite.results)
 
         return cls(
             case_count=case_count,

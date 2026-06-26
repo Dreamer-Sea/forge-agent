@@ -90,10 +90,7 @@ def test_trace_exporter_includes_run_id(tmp_path: Path) -> None:
 
     JsonlTraceExporter(trace_path).export(recorder.events)
 
-    rows = [
-        json.loads(line)
-        for line in trace_path.read_text(encoding="utf-8").splitlines()
-    ]
+    rows = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
 
     assert {row["run_id"] for row in rows} == {"run-123"}
     assert {row["case_id"] for row in rows} == {"trace_001"}

@@ -47,9 +47,7 @@ def test_markdown_loader_preserves_source_path(tmp_path: Path) -> None:
 
     markdown_file = nested_dir / "security.md"
     markdown_file.write_text(
-        "# Security\n\n"
-        "## Concept\n\n"
-        "Security protects the agent runtime.\n",
+        "# Security\n\n## Concept\n\nSecurity protects the agent runtime.\n",
         encoding="utf-8",
     )
 

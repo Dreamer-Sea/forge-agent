@@ -90,9 +90,7 @@ def test_context_builder_deduplicates_chunks() -> None:
         rank=2,
     )
 
-    built = ContextBuilder(max_chars=1_000, max_chunks=3).build(
-        [first, duplicate]
-    )
+    built = ContextBuilder(max_chars=1_000, max_chunks=3).build([first, duplicate])
 
     assert len(built.used_results) == 1
     assert built.context.count("Tool Registry stores available tools.") == 1
