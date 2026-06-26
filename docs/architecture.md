@@ -113,3 +113,32 @@ This project intentionally does not implement:
 - Docker sandbox.
 - MCP marketplace.
 - Distributed tracing backend.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    User[User] --> CLI[CLI]
+    CLI --> Runtime[Agent Runtime]
+
+    Runtime --> Provider[Model Provider]
+    Runtime --> Registry[Tool Registry]
+    Runtime --> Trace[Trace Recorder]
+
+    Registry --> FileTools[File Tools]
+    Registry --> RagTool[RAG Tool]
+    Registry --> UtilityTools[Utility Tools]
+
+    RagTool --> Retriever[Markdown Retriever]
+    Retriever --> KnowledgeBase[examples/knowledge_base]
+
+    Runtime --> Permission[Permission Policy]
+    Permission --> WorkspaceGuard[Workspace Guard]
+
+    Eval[Eval Runner] --> Runtime
+    Eval --> Reports[Reports and Traces]
+
+    Trace --> Reports
+```
+
+The diagram highlights the platform boundary rather than a single application workflow. Runtime, provider, tools, RAG, permission, trace, and eval remain separate components so each part can be tested and evolved independently.

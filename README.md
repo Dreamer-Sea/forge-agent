@@ -1158,3 +1158,32 @@ Current limitations:
 - No MCP marketplace.
 - No long-term memory system.
 - No production secret management.
+
+## Architecture Diagram
+
+```mermaid
+flowchart TD
+    User[User] --> CLI[CLI]
+    CLI --> Runtime[Agent Runtime]
+
+    Runtime --> Provider[Model Provider]
+    Runtime --> Registry[Tool Registry]
+    Runtime --> Trace[Trace Recorder]
+
+    Registry --> FileTools[File Tools]
+    Registry --> RagTool[RAG Tool]
+    Registry --> UtilityTools[Utility Tools]
+
+    RagTool --> Retriever[Markdown Retriever]
+    Retriever --> KnowledgeBase[examples/knowledge_base]
+
+    Runtime --> Permission[Permission Policy]
+    Permission --> WorkspaceGuard[Workspace Guard]
+
+    Eval[Eval Runner] --> Runtime
+    Eval --> Reports[Reports and Traces]
+
+    Trace --> Reports
+```
+
+This diagram shows the Day 6 demo architecture: the CLI drives the runtime, the runtime talks to a model provider, tools are executed through the registry, permission checks protect workspace access, RAG is exposed as a tool, and eval produces reports and traces.
