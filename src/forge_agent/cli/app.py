@@ -268,7 +268,7 @@ def rag_search(
         str,
         typer.Option(
             "--retriever",
-            help="Retriever backend to use: keyword or vector.",
+            help="Retriever backend to use: keyword, vector, or hybrid.",
         ),
     ] = "keyword",
     top_k: Annotated[
@@ -379,11 +379,11 @@ def _validate_runtime_name(runtime_name: str) -> RuntimeName:
 
 def _validate_retriever_type(retriever_type: str) -> RetrieverType:
     normalized = retriever_type.strip().lower()
-    if normalized in {"keyword", "vector"}:
+    if normalized in {"keyword", "vector", "hybrid"}:
         return cast(RetrieverType, normalized)
 
     raise typer.BadParameter(
-        f"Unknown retriever: {retriever_type}. Supported retrievers: keyword, vector.",
+        f"Unknown retriever: {retriever_type}. Supported retrievers: keyword, vector, hybrid.",
         param_hint="--retriever",
     )
 
