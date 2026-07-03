@@ -1,9 +1,4 @@
-"""Backward-compatible retriever exports.
-
-New code should import from forge_agent.rag.retrievers.
-"""
-
-from __future__ import annotations
+"""Retriever implementations for RAG pipelines."""
 
 from forge_agent.rag.retrievers.base import Retriever, SearchResult
 from forge_agent.rag.retrievers.keyword import (
