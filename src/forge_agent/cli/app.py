@@ -6,6 +6,7 @@ from typing import Annotated, cast
 
 import typer
 
+from forge_agent.cli.langchain import langchain_app
 from forge_agent.evals import EvalDataset, EvalReport, EvalRunner, RuntimeEvalExecutor
 from forge_agent.integrations.langgraph import LangGraphAgentRuntime
 from forge_agent.observability import JsonlTraceExporter
@@ -20,6 +21,7 @@ from forge_agent.tools.registry import ToolRegistry
 app = typer.Typer(help="A minimal Agent Platform demo CLI.")
 rag_app = typer.Typer(help="RAG commands.")
 app.add_typer(rag_app, name="rag")
+app.add_typer(langchain_app, name="langchain")
 
 
 @app.callback()
