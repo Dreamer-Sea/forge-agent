@@ -832,3 +832,35 @@ The value of this demo is that the core abstractions and critical paths are impl
 ## License
 
 This project is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
+
+## RAG Quality Evaluation
+
+`forge-agent` includes a deterministic RAG quality loop for comparing keyword, vector, hybrid retrieval, and reranking behavior.
+
+It supports:
+
+- selectable retrievers: `keyword`, `vector`, `hybrid`;
+- Reciprocal Rank Fusion for hybrid retrieval;
+- deterministic `keyword-overlap` reranking;
+- JSONL retrieval eval datasets;
+- metrics such as `source_hit_rate`, `recall_at_k`, `MRR`, `term_hit_rate`, `no_answer_accuracy`, and `citation_presence_rate`;
+- Markdown and JSON eval reports.
+
+Example:
+
+    uv run forge rag eval examples/evals/rag_retrieval.jsonl \
+      --knowledge-base examples/knowledge_base \
+      --retriever hybrid \
+      --reranker keyword-overlap \
+      --top-k 5 \
+      --top-n 3 \
+      --output examples/reports/rag-eval-report.md \
+      --json-output examples/reports/rag-eval-results.json
+
+See [`docs/rag-quality.md`](docs/rag-quality.md) for the retrieval evaluation design and report interpretation.
+
+Generated example reports:
+
+- [`examples/reports/rag-eval-report.md`](examples/reports/rag-eval-report.md)
+- [`examples/reports/rag-eval-results.json`](examples/reports/rag-eval-results.json)
+
