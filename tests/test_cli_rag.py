@@ -30,9 +30,7 @@ def write_security_knowledge_base(path: Path) -> None:
         encoding="utf-8",
     )
     (path / "runtime.md").write_text(
-        "# Runtime\n\n"
-        "## Agent Loop\n\n"
-        "Agent runtime executes model calls and tool calls.\n",
+        "# Runtime\n\n## Agent Loop\n\nAgent runtime executes model calls and tool calls.\n",
         encoding="utf-8",
     )
 

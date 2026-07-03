@@ -42,9 +42,7 @@ def test_knowledge_base_search_returns_grounded_context(tmp_path: Path) -> None:
 
     assert search.results
     assert search.results[0].chunk.metadata.relative_path == "agent-runtime.md"
-    assert "[source: agent-runtime.md#Agent Runtime > Components" in (
-        search.built_context.context
-    )
+    assert "[source: agent-runtime.md#Agent Runtime > Components" in (search.built_context.context)
     assert "Tool Registry" in search.built_context.context
 
 
@@ -65,9 +63,7 @@ def test_knowledge_base_can_use_keyword_retriever(tmp_path: Path) -> None:
 
     assert search.results
     assert search.results[0].chunk.metadata.relative_path == "security.md"
-    assert "Workspace guard checks file tool permissions" in (
-        search.built_context.context
-    )
+    assert "Workspace guard checks file tool permissions" in (search.built_context.context)
 
 
 def test_knowledge_base_can_use_vector_retriever(tmp_path: Path) -> None:
@@ -78,9 +74,7 @@ def test_knowledge_base_can_use_vector_retriever(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     (tmp_path / "runtime.md").write_text(
-        "# Runtime\n\n"
-        "## Agent Loop\n\n"
-        "Agent runtime executes model calls and tool calls.\n",
+        "# Runtime\n\n## Agent Loop\n\nAgent runtime executes model calls and tool calls.\n",
         encoding="utf-8",
     )
 
@@ -99,9 +93,7 @@ def test_knowledge_base_can_use_vector_retriever(tmp_path: Path) -> None:
 
 def test_knowledge_base_rejects_unknown_retriever_type(tmp_path: Path) -> None:
     (tmp_path / "security.md").write_text(
-        "# Security\n\n"
-        "## Workspace Guard\n\n"
-        "Workspace guard checks file tool permissions.\n",
+        "# Security\n\n## Workspace Guard\n\nWorkspace guard checks file tool permissions.\n",
         encoding="utf-8",
     )
 

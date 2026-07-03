@@ -250,7 +250,6 @@ def rag_index(path: Path) -> None:
         typer.echo(f"- {document.metadata.relative_path}: {document.metadata.title}")
 
 
-
 @rag_app.command("search")
 def rag_search(
     query: Annotated[
@@ -347,6 +346,7 @@ def rag_search(
             f"heading={heading}"
         )
 
+
 def _create_runtime(
     *,
     runtime_name: RuntimeName,
@@ -377,17 +377,16 @@ def _validate_runtime_name(runtime_name: str) -> RuntimeName:
     )
 
 
-
 def _validate_retriever_type(retriever_type: str) -> RetrieverType:
     normalized = retriever_type.strip().lower()
     if normalized in {"keyword", "vector"}:
         return cast(RetrieverType, normalized)
 
     raise typer.BadParameter(
-        f"Unknown retriever: {retriever_type}. "
-        "Supported retrievers: keyword, vector.",
+        f"Unknown retriever: {retriever_type}. Supported retrievers: keyword, vector.",
         param_hint="--retriever",
     )
+
 
 def _load_knowledge_base_if_exists(
     path: Path,
