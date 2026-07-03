@@ -4,12 +4,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from forge_agent.rag.chunker import Chunk, MarkdownChunker
 from forge_agent.rag.context_builder import BuiltContext, ContextBuilder
 from forge_agent.rag.document import Document
 from forge_agent.rag.loader import MarkdownLoader
-from forge_agent.rag.retriever import KeywordRetriever, SearchResult
+from forge_agent.rag.retrievers import (
+    KeywordRetriever,
+    Retriever,
+    SearchResult,
+    VectorRetriever,
+)
+
+RetrieverType = Literal["keyword", "vector"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,13 +37,13 @@ class KnowledgeBaseSearch:
 
 
 class KnowledgeBase:
-    """Local Markdown knowledge base backed by keyword retrieval."""
+    """Local Markdown knowledge base backed by a selectable retriever."""
 
     def __init__(
         self,
         *,
         index: KnowledgeBaseIndex,
-        retriever: KeywordRetriever,
+        retriever: Retriever,
         context_builder: ContextBuilder,
     ) -> None:
         self._index = index
@@ -56,6 +64,7 @@ class KnowledgeBase:
         context_max_chars: int = 4_000,
         context_max_chunks: int = 5,
         default_top_k: int = 5,
+        retriever_type: RetrieverType = "keyword",
     ) -> KnowledgeBase:
         """Build an in-memory knowledge base from local Markdown files."""
         loader = MarkdownLoader()
@@ -63,7 +72,6 @@ class KnowledgeBase:
 
         documents = loader.load_dir(directory)
         chunks = [chunk for document in documents for chunk in chunker.chunk(document)]
-
         index = KnowledgeBaseIndex(
             documents=tuple(documents),
             chunks=tuple(chunks),
@@ -71,7 +79,11 @@ class KnowledgeBase:
 
         return cls(
             index=index,
-            retriever=KeywordRetriever(list(chunks), default_top_k=default_top_k),
+            retriever=_create_retriever(
+                retriever_type=retriever_type,
+                chunks=chunks,
+                default_top_k=default_top_k,
+            ),
             context_builder=ContextBuilder(
                 max_chars=context_max_chars,
                 max_chunks=context_max_chunks,
@@ -82,8 +94,22 @@ class KnowledgeBase:
         """Search the knowledge base and build grounded context."""
         results = self._retriever.search(query, top_k=top_k)
         built_context = self._context_builder.build(results)
-
         return KnowledgeBaseSearch(
             results=tuple(results),
             built_context=built_context,
         )
+
+
+def _create_retriever(
+    *,
+    retriever_type: RetrieverType,
+    chunks: list[Chunk],
+    default_top_k: int,
+) -> Retriever:
+    if retriever_type == "keyword":
+        return KeywordRetriever(chunks, default_top_k=default_top_k)
+
+    if retriever_type == "vector":
+        return VectorRetriever(chunks, default_top_k=default_top_k)
+
+    raise ValueError(f"Unsupported retriever type: {retriever_type}")
