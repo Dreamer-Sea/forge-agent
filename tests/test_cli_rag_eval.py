@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -171,3 +172,46 @@ def _write_eval_dataset(path: Path) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def test_cli_rag_eval_writes_markdown_and_json_reports(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    knowledge_base = tmp_path / "knowledge_base"
+    dataset = tmp_path / "rag_eval.jsonl"
+    report = tmp_path / "reports" / "rag-eval-report.md"
+    json_report = tmp_path / "reports" / "rag-eval-results.json"
+
+    _write_security_knowledge_base(knowledge_base)
+    _write_eval_dataset(dataset)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "rag",
+            "eval",
+            "rag_eval.jsonl",
+            "--knowledge-base",
+            "knowledge_base",
+            "--retriever",
+            "keyword",
+            "--output",
+            "reports/rag-eval-report.md",
+            "--json-output",
+            "reports/rag-eval-results.json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Markdown report written: reports/rag-eval-report.md" in result.output
+    assert "JSON report written: reports/rag-eval-results.json" in result.output
+
+    assert report.exists()
+    assert json_report.exists()
+    assert "# RAG Retrieval Evaluation Report" in report.read_text(encoding="utf-8")
+
+    data = json.loads(json_report.read_text(encoding="utf-8"))
+    assert data["retriever"] == "keyword"
+    assert data["summary"]["total_cases"] == 2

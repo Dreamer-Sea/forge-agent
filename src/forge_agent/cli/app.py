@@ -10,7 +10,12 @@ from forge_agent.evals import EvalDataset, EvalReport, EvalRunner, RuntimeEvalEx
 from forge_agent.integrations.langgraph import LangGraphAgentRuntime
 from forge_agent.observability import JsonlTraceExporter
 from forge_agent.providers.fake import FakeProvider
-from forge_agent.rag.evals import RerankerName, run_rag_retrieval_eval
+from forge_agent.rag.evals import (
+    RerankerName,
+    run_rag_retrieval_eval,
+    write_rag_retrieval_json_report,
+    write_rag_retrieval_markdown_report,
+)
 from forge_agent.rag.knowledge_base import KnowledgeBase, RetrieverType
 from forge_agent.runtime import RuntimeName
 from forge_agent.runtime.native_runtime import NativeAgentRuntime
@@ -390,6 +395,20 @@ def rag_eval(
             help="Keep only the top-n final results after optional reranking.",
         ),
     ] = None,
+    output: Annotated[
+        Path | None,
+        typer.Option(
+            "--output",
+            help="Write a Markdown RAG retrieval eval report.",
+        ),
+    ] = None,
+    json_output: Annotated[
+        Path | None,
+        typer.Option(
+            "--json-output",
+            help="Write a JSON RAG retrieval eval result file.",
+        ),
+    ] = None,
 ) -> None:
     """Run deterministic RAG retrieval evals."""
     selected_retriever = _validate_retriever_type(retriever_type)
@@ -415,6 +434,16 @@ def rag_eval(
         resolved_knowledge_base_path = workspace.resolve_user_path(
             knowledge_base,
             tool_name="rag_eval",
+        )
+        resolved_output_path = (
+            workspace.resolve_user_path(output, tool_name="rag_eval")
+            if output is not None
+            else None
+        )
+        resolved_json_output_path = (
+            workspace.resolve_user_path(json_output, tool_name="rag_eval")
+            if json_output is not None
+            else None
         )
     except ToolError as error:
         typer.echo(f"Error: {error.message}", err=True)
@@ -491,6 +520,14 @@ def rag_eval(
             f"no_answer_correct={evaluation.no_answer_correct} "
             f"sources={retrieved_sources}"
         )
+
+    if resolved_output_path is not None:
+        write_rag_retrieval_markdown_report(suite, resolved_output_path)
+        typer.echo(f"Markdown report written: {workspace.safe_display(resolved_output_path)}")
+
+    if resolved_json_output_path is not None:
+        write_rag_retrieval_json_report(suite, resolved_json_output_path)
+        typer.echo(f"JSON report written: {workspace.safe_display(resolved_json_output_path)}")
 
 
 def _create_runtime(
