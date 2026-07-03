@@ -11,13 +11,14 @@ from forge_agent.rag.context_builder import BuiltContext, ContextBuilder
 from forge_agent.rag.document import Document
 from forge_agent.rag.loader import MarkdownLoader
 from forge_agent.rag.retrievers import (
+    HybridRetriever,
     KeywordRetriever,
     Retriever,
     SearchResult,
     VectorRetriever,
 )
 
-RetrieverType = Literal["keyword", "vector"]
+RetrieverType = Literal["keyword", "vector", "hybrid"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,15 +102,21 @@ class KnowledgeBase:
 
 
 def _create_retriever(
-    *,
-    retriever_type: RetrieverType,
     chunks: list[Chunk],
+    retriever_type: RetrieverType,
+    *,
     default_top_k: int,
 ) -> Retriever:
     if retriever_type == "keyword":
         return KeywordRetriever(chunks, default_top_k=default_top_k)
-
     if retriever_type == "vector":
         return VectorRetriever(chunks, default_top_k=default_top_k)
-
+    if retriever_type == "hybrid":
+        return HybridRetriever(
+            [
+                KeywordRetriever(chunks, default_top_k=default_top_k),
+                VectorRetriever(chunks, default_top_k=default_top_k),
+            ],
+            default_top_k=default_top_k,
+        )
     raise ValueError(f"Unsupported retriever type: {retriever_type}")
