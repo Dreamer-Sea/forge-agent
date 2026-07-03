@@ -21,6 +21,22 @@ def write_knowledge_base(path: Path) -> None:
     )
 
 
+def write_security_knowledge_base(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "workspace-guard.md").write_text(
+        "# Security\n\n"
+        "## Workspace Guard\n\n"
+        "Workspace guard checks file tool permissions and blocks path escape.\n",
+        encoding="utf-8",
+    )
+    (path / "runtime.md").write_text(
+        "# Runtime\n\n"
+        "## Agent Loop\n\n"
+        "Agent runtime executes model calls and tool calls.\n",
+        encoding="utf-8",
+    )
+
+
 def test_cli_rag_index_indexes_knowledge_base(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -36,6 +52,90 @@ def test_cli_rag_index_indexes_knowledge_base(
     assert "Documents: 1" in result.output
     assert "Chunks:" in result.output
     assert "agent-runtime.md" in result.output
+
+
+def test_cli_rag_search_with_keyword_retriever(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    knowledge_base = tmp_path / "knowledge_base"
+    write_security_knowledge_base(knowledge_base)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "rag",
+            "search",
+            "workspace guard permission",
+            "--knowledge-base",
+            "knowledge_base",
+            "--retriever",
+            "keyword",
+            "--top-k",
+            "3",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Retriever: keyword" in result.output
+    assert "Results:" in result.output
+    assert "workspace-guard.md" in result.output
+    assert "Workspace guard checks file tool permissions" in result.output
+
+
+def test_cli_rag_search_with_vector_retriever(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    knowledge_base = tmp_path / "knowledge_base"
+    write_security_knowledge_base(knowledge_base)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "rag",
+            "search",
+            "workspace guard permission",
+            "--knowledge-base",
+            "knowledge_base",
+            "--retriever",
+            "vector",
+            "--top-k",
+            "3",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Retriever: vector" in result.output
+    assert "Results:" in result.output
+    assert "workspace-guard.md" in result.output
+
+
+def test_cli_rag_search_rejects_unknown_retriever(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    knowledge_base = tmp_path / "knowledge_base"
+    write_security_knowledge_base(knowledge_base)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "rag",
+            "search",
+            "workspace guard permission",
+            "--knowledge-base",
+            "knowledge_base",
+            "--retriever",
+            "unknown",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Unknown retriever" in result.output
 
 
 def test_cli_run_can_use_knowledge_base(

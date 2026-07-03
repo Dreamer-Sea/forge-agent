@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, cast
 
 import typer
 
@@ -10,7 +10,7 @@ from forge_agent.evals import EvalDataset, EvalReport, EvalRunner, RuntimeEvalEx
 from forge_agent.integrations.langgraph import LangGraphAgentRuntime
 from forge_agent.observability import JsonlTraceExporter
 from forge_agent.providers.fake import FakeProvider
-from forge_agent.rag.knowledge_base import KnowledgeBase
+from forge_agent.rag.knowledge_base import KnowledgeBase, RetrieverType
 from forge_agent.runtime import RuntimeName
 from forge_agent.runtime.native_runtime import NativeAgentRuntime
 from forge_agent.security import ToolError, Workspace
@@ -250,6 +250,103 @@ def rag_index(path: Path) -> None:
         typer.echo(f"- {document.metadata.relative_path}: {document.metadata.title}")
 
 
+
+@rag_app.command("search")
+def rag_search(
+    query: Annotated[
+        str,
+        typer.Argument(help="Query to search in the local Markdown knowledge base."),
+    ],
+    knowledge_base: Annotated[
+        Path,
+        typer.Option(
+            "--knowledge-base",
+            "-k",
+            help="Path to a local Markdown knowledge base.",
+        ),
+    ] = DEFAULT_KNOWLEDGE_BASE_PATH,
+    retriever_type: Annotated[
+        str,
+        typer.Option(
+            "--retriever",
+            help="Retriever backend to use: keyword or vector.",
+        ),
+    ] = "keyword",
+    top_k: Annotated[
+        int,
+        typer.Option(
+            "--top-k",
+            help="Maximum number of retrieval results.",
+        ),
+    ] = 3,
+) -> None:
+    """Search a local Markdown knowledge base."""
+    selected_retriever = _validate_retriever_type(retriever_type)
+
+    if top_k <= 0:
+        raise typer.BadParameter(
+            "top-k must be greater than 0",
+            param_hint="--top-k",
+        )
+
+    workspace = Workspace(Path.cwd())
+    try:
+        resolved_path = workspace.resolve_user_path(
+            knowledge_base,
+            tool_name="rag_search",
+        )
+    except ToolError as error:
+        typer.echo(f"Error: {error.message}", err=True)
+        typer.echo(f"Reason: {error.reason}", err=True)
+        typer.echo(f"Code: {error.error_code}", err=True)
+        raise typer.Exit(code=1) from error
+
+    if not resolved_path.exists():
+        typer.echo(
+            f"Error: Path does not exist: {workspace.safe_display(resolved_path)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    if not resolved_path.is_dir():
+        typer.echo(
+            f"Error: Path is not a directory: {workspace.safe_display(resolved_path)}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    local_knowledge_base = KnowledgeBase.from_directory(
+        resolved_path,
+        retriever_type=selected_retriever,
+        context_max_chunks=top_k,
+        default_top_k=top_k,
+    )
+    search = local_knowledge_base.search(query, top_k=top_k)
+
+    typer.echo(f"Knowledge base: {workspace.safe_display(resolved_path)}")
+    typer.echo(f"Retriever: {selected_retriever}")
+    typer.echo(f"Query: {query}")
+    typer.echo(f"Results: {len(search.results)}")
+
+    if not search.results:
+        typer.echo("")
+        typer.echo("No results.")
+        return
+
+    typer.echo("")
+    typer.echo("Context:")
+    typer.echo(search.built_context.context)
+
+    typer.echo("")
+    typer.echo("Sources:")
+    for result in search.results:
+        heading = " > ".join(result.chunk.metadata.heading_path)
+        typer.echo(
+            f"- #{result.rank} score={result.score:.4f} "
+            f"source={result.chunk.metadata.relative_path} "
+            f"heading={heading}"
+        )
+
 def _create_runtime(
     *,
     runtime_name: RuntimeName,
@@ -279,6 +376,18 @@ def _validate_runtime_name(runtime_name: str) -> RuntimeName:
         param_hint="--runtime",
     )
 
+
+
+def _validate_retriever_type(retriever_type: str) -> RetrieverType:
+    normalized = retriever_type.strip().lower()
+    if normalized in {"keyword", "vector"}:
+        return cast(RetrieverType, normalized)
+
+    raise typer.BadParameter(
+        f"Unknown retriever: {retriever_type}. "
+        "Supported retrievers: keyword, vector.",
+        param_hint="--retriever",
+    )
 
 def _load_knowledge_base_if_exists(
     path: Path,
