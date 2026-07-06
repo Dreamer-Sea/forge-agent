@@ -11,12 +11,15 @@ from forge_agent.runtime.base import (
 )
 from forge_agent.runtime.events import TraceEvent
 from forge_agent.runtime.native_runtime import AgentRunResult, NativeAgentRuntime
+from forge_agent.runtime.planning_runtime import PlanningRunResult, PlanningRuntime
 
 __all__ = [
     "DEFAULT_RUNTIME_NAME",
     "AgentRuntime",
     "AgentRunResult",
     "NativeAgentRuntime",
+    "PlanningRuntime",
+    "PlanningRunResult",
     "RunConfig",
     "RunResult",
     "RuntimeName",

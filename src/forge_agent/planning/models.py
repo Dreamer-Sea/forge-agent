@@ -81,6 +81,12 @@ class PlanStep(BaseModel):
         self.failure_reason = reason
         return self
 
+    def mark_skipped(self, reason: str | None = None) -> Self:
+        self.status = StepStatus.SKIPPED
+        if reason is not None:
+            self.failure_reason = reason
+        return self
+
 
 class Plan(BaseModel):
     """A traceable plan created for one user task."""
@@ -108,8 +114,9 @@ class Plan(BaseModel):
         return self
 
     def is_completed(self) -> bool:
+        terminal_statuses = {StepStatus.SUCCEEDED, StepStatus.SKIPPED}
         return bool(self.steps) and all(
-            step.status == StepStatus.SUCCEEDED for step in self.steps
+            step.status in terminal_statuses for step in self.steps
         )
 
     def next_executable_step(self) -> PlanStep | None:
