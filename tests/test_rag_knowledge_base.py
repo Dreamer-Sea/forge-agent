@@ -165,7 +165,7 @@ def test_day2_evaluation_document_is_retrievable() -> None:
     assert "Eval work follows a repeatable loop" in search.built_context.context
 
 
-def test_knowledge_base_can_use_hybrid_retriever(tmp_path: Path) -> None:
+def test_knowledge_base_can_use_hybrid_retriever_returns_grounded_context(tmp_path: Path) -> None:
     (tmp_path / "security.md").write_text(
         "# Security\n\n"
         "## Workspace Guard\n\n"
