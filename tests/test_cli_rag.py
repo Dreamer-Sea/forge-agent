@@ -134,6 +134,7 @@ def test_cli_rag_search_rejects_unknown_retriever(
 
     assert result.exit_code != 0
     assert "Unknown retriever" in result.output
+    assert "keyword, vector, hybrid" in result.output
 
 
 def test_cli_run_can_use_knowledge_base(
@@ -192,3 +193,33 @@ def test_cli_rag_index_inside_workspace_allowed(
     assert "Knowledge base: knowledge_base" in result.output
     assert "Documents: 1" in result.output
     assert "agent-runtime.md" in result.output
+
+
+def test_cli_rag_search_with_hybrid_retriever(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    knowledge_base = tmp_path / "knowledge_base"
+    write_security_knowledge_base(knowledge_base)
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        [
+            "rag",
+            "search",
+            "workspace guard permission",
+            "--knowledge-base",
+            "knowledge_base",
+            "--retriever",
+            "hybrid",
+            "--top-k",
+            "3",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Retriever: hybrid" in result.output
+    assert "Results:" in result.output
+    assert "workspace-guard.md" in result.output
+    assert "Workspace guard checks file tool permissions" in result.output

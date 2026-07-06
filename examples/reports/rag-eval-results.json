@@ -1,0 +1,196 @@
+{
+  "cases": [
+    {
+      "case_id": "rag_security_permission_system",
+      "citation_present": true,
+      "expect_no_answer": false,
+      "expected_sources": [
+        "security.md"
+      ],
+      "expected_terms": [
+        "permission system",
+        "tool call",
+        "allowed",
+        "runtime policy"
+      ],
+      "matched_terms": [
+        "permission system",
+        "tool call",
+        "allowed",
+        "runtime policy"
+      ],
+      "mrr": 1.0,
+      "no_answer_correct": false,
+      "query": "How does the permission system decide whether a tool call is allowed?",
+      "recall_at_k": 1.0,
+      "retrieved_sources": [
+        "security.md",
+        "security.md",
+        "rag.md"
+      ],
+      "source_hit": true,
+      "term_hit_rate": 1.0,
+      "top_k": 5
+    },
+    {
+      "case_id": "rag_workspace_guard_path_escape",
+      "citation_present": true,
+      "expect_no_answer": false,
+      "expected_sources": [
+        "security.md"
+      ],
+      "expected_terms": [
+        "workspace",
+        "guard",
+        "outside",
+        "path"
+      ],
+      "matched_terms": [
+        "workspace",
+        "outside"
+      ],
+      "mrr": 1.0,
+      "no_answer_correct": false,
+      "query": "How does workspace guard prevent tools from reading files outside the workspace?",
+      "recall_at_k": 1.0,
+      "retrieved_sources": [
+        "security.md",
+        "agent-runtime.md",
+        "agent-runtime.md"
+      ],
+      "source_hit": true,
+      "term_hit_rate": 0.5,
+      "top_k": 5
+    },
+    {
+      "case_id": "rag_runtime_agent_loop",
+      "citation_present": true,
+      "expect_no_answer": false,
+      "expected_sources": [
+        "agent-runtime.md"
+      ],
+      "expected_terms": [
+        "agent runtime",
+        "model calls",
+        "tool calls",
+        "trace"
+      ],
+      "matched_terms": [
+        "agent runtime",
+        "model calls",
+        "tool calls",
+        "trace"
+      ],
+      "mrr": 1.0,
+      "no_answer_correct": false,
+      "query": "What are the core responsibilities of the agent runtime loop?",
+      "recall_at_k": 1.0,
+      "retrieved_sources": [
+        "agent-runtime.md",
+        "agent-runtime.md",
+        "rag.md"
+      ],
+      "source_hit": true,
+      "term_hit_rate": 1.0,
+      "top_k": 5
+    },
+    {
+      "case_id": "rag_evaluation_loop",
+      "citation_present": true,
+      "expect_no_answer": false,
+      "expected_sources": [
+        "evaluation.md"
+      ],
+      "expected_terms": [
+        "eval dataset",
+        "expected source",
+        "retrieval result",
+        "failure reason"
+      ],
+      "matched_terms": [
+        "eval dataset",
+        "expected source",
+        "retrieval result",
+        "failure reason"
+      ],
+      "mrr": 1.0,
+      "no_answer_correct": false,
+      "query": "What components are included in the evaluation loop?",
+      "recall_at_k": 1.0,
+      "retrieved_sources": [
+        "evaluation.md",
+        "evaluation.md",
+        "evaluation.md"
+      ],
+      "source_hit": true,
+      "term_hit_rate": 1.0,
+      "top_k": 5
+    },
+    {
+      "case_id": "rag_retrieval_citations",
+      "citation_present": true,
+      "expect_no_answer": false,
+      "expected_sources": [
+        "rag.md"
+      ],
+      "expected_terms": [
+        "retrieval",
+        "context",
+        "citation",
+        "source"
+      ],
+      "matched_terms": [
+        "retrieval",
+        "context",
+        "citation"
+      ],
+      "mrr": 1.0,
+      "no_answer_correct": false,
+      "query": "How does RAG retrieval build grounded context with citations?",
+      "recall_at_k": 1.0,
+      "retrieved_sources": [
+        "rag.md",
+        "rag.md",
+        "evaluation.md"
+      ],
+      "source_hit": true,
+      "term_hit_rate": 0.75,
+      "top_k": 5
+    },
+    {
+      "case_id": "rag_no_answer_billing_saga",
+      "citation_present": true,
+      "expect_no_answer": true,
+      "expected_sources": [],
+      "expected_terms": [],
+      "matched_terms": [],
+      "mrr": 0.0,
+      "no_answer_correct": false,
+      "query": "How does the billing service implement distributed transaction saga retries?",
+      "recall_at_k": 0.0,
+      "retrieved_sources": [
+        "evaluation.md",
+        "rag.md",
+        "evaluation.md"
+      ],
+      "source_hit": false,
+      "term_hit_rate": 0.0,
+      "top_k": 5
+    }
+  ],
+  "dataset_path": "examples/evals/rag_retrieval.jsonl",
+  "knowledge_base_path": "examples/knowledge_base",
+  "reranker": "keyword-overlap",
+  "retriever": "hybrid",
+  "summary": {
+    "answerable_cases": 5,
+    "citation_presence_rate": 1.0,
+    "mrr": 1.0,
+    "no_answer_accuracy": 0.0,
+    "no_answer_cases": 1,
+    "recall_at_k": 1.0,
+    "source_hit_rate": 1.0,
+    "term_hit_rate": 0.85,
+    "total_cases": 6
+  }
+}

@@ -163,3 +163,28 @@ def test_day2_evaluation_document_is_retrievable() -> None:
     assert search.built_context.citations
     assert "evaluation.md" in search.built_context.context
     assert "Eval work follows a repeatable loop" in search.built_context.context
+
+
+def test_knowledge_base_can_use_hybrid_retriever(tmp_path: Path) -> None:
+    (tmp_path / "security.md").write_text(
+        "# Security\n\n"
+        "## Workspace Guard\n\n"
+        "Workspace guard checks file tool permissions and blocks path escape.\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "runtime.md").write_text(
+        "# Runtime\n\n## Agent Loop\n\nAgent runtime executes model calls and tool calls.\n",
+        encoding="utf-8",
+    )
+
+    knowledge_base = KnowledgeBase.from_directory(
+        tmp_path,
+        retriever_type="hybrid",
+    )
+
+    search = knowledge_base.search("workspace guard permission", top_k=3)
+
+    assert search.results
+    assert search.results[0].chunk.metadata.relative_path == "security.md"
+    assert "Workspace guard checks file tool permissions" in (search.built_context.context)
+    assert search.built_context.citations
