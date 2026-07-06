@@ -64,7 +64,7 @@ def test_cli_help_mentions_planning_runtime() -> None:
 
     assert result.exit_code == 0
     assert "Runtime backend to use: native" in result.output
-    assert "langgraph, or planning" in result.output
+    assert "langgraph, planning, or reflection" in result.output
 
 
 def test_cli_rejects_unknown_runtime_with_planning_in_supported_list() -> None:
