@@ -73,6 +73,7 @@ class KnowledgeBase:
 
         documents = loader.load_dir(directory)
         chunks = [chunk for document in documents for chunk in chunker.chunk(document)]
+
         index = KnowledgeBaseIndex(
             documents=tuple(documents),
             chunks=tuple(chunks),
@@ -102,21 +103,18 @@ class KnowledgeBase:
 
 
 def _create_retriever(
-    chunks: list[Chunk],
-    retriever_type: RetrieverType,
     *,
+    retriever_type: RetrieverType,
+    chunks: list[Chunk],
     default_top_k: int,
 ) -> Retriever:
     if retriever_type == "keyword":
         return KeywordRetriever(chunks, default_top_k=default_top_k)
+
     if retriever_type == "vector":
         return VectorRetriever(chunks, default_top_k=default_top_k)
+
     if retriever_type == "hybrid":
-        return HybridRetriever(
-            [
-                KeywordRetriever(chunks, default_top_k=default_top_k),
-                VectorRetriever(chunks, default_top_k=default_top_k),
-            ],
-            default_top_k=default_top_k,
-        )
+        return HybridRetriever(chunks, default_top_k=default_top_k)
+
     raise ValueError(f"Unsupported retriever type: {retriever_type}")
