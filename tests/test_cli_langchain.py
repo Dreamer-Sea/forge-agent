@@ -43,7 +43,7 @@ def test_cli_langchain_tools_reports_missing_dependency(
     assert "uv sync --extra langchain" in result.output
 
 
-def test_cli_langchain_rag_returns_documents() -> None:
+def test_cli_langchain_rag_returns_documents_with_keyword_retriever() -> None:
     result = runner.invoke(
         app,
         [
@@ -69,6 +69,32 @@ def test_cli_langchain_rag_returns_documents() -> None:
     assert "retriever=keyword" in result.output
 
 
+def test_cli_langchain_rag_returns_documents_with_hybrid_retriever() -> None:
+    result = runner.invoke(
+        app,
+        [
+            "langchain",
+            "rag",
+            "workspace guard permission",
+            "--knowledge-base",
+            "examples/knowledge_base",
+            "--retriever",
+            "hybrid",
+            "--top-k",
+            "3",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Knowledge base: examples/knowledge_base" in result.output
+    assert "Retriever: hybrid" in result.output
+    assert "Query: workspace guard permission" in result.output
+    assert "Documents: 3" in result.output
+    assert "source=security.md" in result.output
+    assert "chunk_id=" in result.output
+    assert "retriever=hybrid" in result.output
+
+
 def test_cli_langchain_rag_rejects_unknown_retriever() -> None:
     result = runner.invoke(
         app,
@@ -86,4 +112,4 @@ def test_cli_langchain_rag_rejects_unknown_retriever() -> None:
     assert result.exit_code != 0
     assert "Unknown retriever: unknown" in result.output
     assert "Supported" in result.output
-    assert "retrievers: keyword, vector." in result.output
+    assert "retrievers: keyword, vector, hybrid." in result.output
