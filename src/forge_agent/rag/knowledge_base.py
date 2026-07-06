@@ -11,13 +11,14 @@ from forge_agent.rag.context_builder import BuiltContext, ContextBuilder
 from forge_agent.rag.document import Document
 from forge_agent.rag.loader import MarkdownLoader
 from forge_agent.rag.retrievers import (
+    HybridRetriever,
     KeywordRetriever,
     Retriever,
     SearchResult,
     VectorRetriever,
 )
 
-RetrieverType = Literal["keyword", "vector"]
+RetrieverType = Literal["keyword", "vector", "hybrid"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +73,7 @@ class KnowledgeBase:
 
         documents = loader.load_dir(directory)
         chunks = [chunk for document in documents for chunk in chunker.chunk(document)]
+
         index = KnowledgeBaseIndex(
             documents=tuple(documents),
             chunks=tuple(chunks),
@@ -111,5 +113,8 @@ def _create_retriever(
 
     if retriever_type == "vector":
         return VectorRetriever(chunks, default_top_k=default_top_k)
+
+    if retriever_type == "hybrid":
+        return HybridRetriever(chunks, default_top_k=default_top_k)
 
     raise ValueError(f"Unsupported retriever type: {retriever_type}")
