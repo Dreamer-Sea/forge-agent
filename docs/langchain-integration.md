@@ -134,7 +134,7 @@ Search a local knowledge base through the LangChain retriever adapter:
 
     uv run forge langchain rag "workspace guard permission" \
       --knowledge-base examples/knowledge_base \
-      --retriever keyword \
+      --retriever hybrid \
       --top-k 3
 
 The command returns LangChain-style document results while preserving source metadata:
