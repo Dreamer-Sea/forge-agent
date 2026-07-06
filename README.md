@@ -66,7 +66,7 @@ The project is intentionally compact. The goal is not to maximize features, but 
 flowchart TD
     User["User"] --> CLI["Typer CLI<br/>forge"]
 
-    CLI --> RuntimeSelection["Runtime Selection<br/>native | langgraph"]
+    CLI --> RuntimeSelection["Runtime Selection<br/>native | langgraph | planning"]
     RuntimeSelection --> NativeRuntime["NativeAgentRuntime"]
     RuntimeSelection --> LangGraphRuntime["LangGraphRuntimeAdapter"]
 
@@ -864,3 +864,43 @@ Generated example reports:
 - [`examples/reports/rag-eval-report.md`](examples/reports/rag-eval-report.md)
 - [`examples/reports/rag-eval-results.json`](examples/reports/rag-eval-results.json)
 
+## Planning Runtime
+
+`forge-agent` includes a traceable Plan-Execute-Replan runtime that makes task planning explicit, deterministic, testable, and observable.
+
+The native runtime follows a compact multi-step loop:
+
+```text
+model_call -> tool_call -> tool_result -> final_answer
+```
+
+The planning runtime adds an explicit planning lifecycle:
+
+```text
+create_plan -> execute_step -> observe -> replan_if_needed -> final_answer
+```
+
+### What it demonstrates
+
+- explicit `Plan` and `PlanStep` lifecycle modeling
+- deterministic task decomposition through `SimplePlanner`
+- structured recovery decisions through `ReplanPolicy`
+- planning-aware model/tool execution through `PlanningRuntime`
+- planning trace events such as `plan_created`, `plan_step_started`, `plan_step_failed`, `replan_triggered`, and `plan_completed`
+- planning-specific stopped reasons such as `planning_failed` and `replan_limit_reached`
+
+### CLI usage
+
+Run the planning runtime:
+
+```bash
+uv run forge run "总结知识库内容，然后给出结论" --runtime planning
+```
+
+Validate structured stop behavior:
+
+```bash
+uv run forge run "echo hello" --runtime planning --max-steps 0
+```
+
+See [Planning Runtime Architecture](docs/planning-architecture.md) for the detailed design.

@@ -18,8 +18,9 @@ from forge_agent.rag.evals import (
     write_rag_retrieval_markdown_report,
 )
 from forge_agent.rag.knowledge_base import KnowledgeBase, RetrieverType
-from forge_agent.runtime import RuntimeName
+from forge_agent.runtime import RunConfig, RuntimeName
 from forge_agent.runtime.native_runtime import NativeAgentRuntime
+from forge_agent.runtime.planning_runtime import PlanningRuntime
 from forge_agent.security import ToolError, Workspace
 from forge_agent.tools.defaults import create_default_tool_registry
 from forge_agent.tools.registry import ToolRegistry
@@ -53,9 +54,16 @@ def run(
         str,
         typer.Option(
             "--runtime",
-            help="Runtime backend to use: native or langgraph.",
+            help="Runtime backend to use: native, langgraph, or planning.",
         ),
     ] = "native",
+    max_steps: Annotated[
+        int,
+        typer.Option(
+            "--max-steps",
+            help="Maximum model steps for the selected runtime.",
+        ),
+    ] = 5,
 ) -> None:
     """Run one agent task."""
 
@@ -81,7 +89,7 @@ def run(
         registry=registry,
     )
 
-    result = runtime.run(task)
+    result = runtime.run(task, config=RunConfig(max_steps=max_steps))
 
     tool_names = [tool_result.tool_name for tool_result in result.tool_results]
     tools_used = ", ".join(dict.fromkeys(tool_names)) if tool_names else "none"
@@ -129,7 +137,7 @@ def eval_command(
         str,
         typer.Option(
             "--runtime",
-            help="Runtime backend to use: native or langgraph.",
+            help="Runtime backend to use: native, langgraph, or planning.",
         ),
     ] = "native",
     output: Annotated[
@@ -536,28 +544,33 @@ def _create_runtime(
     *,
     runtime_name: RuntimeName,
     registry: ToolRegistry,
-) -> NativeAgentRuntime | LangGraphAgentRuntime:
+) -> NativeAgentRuntime | LangGraphAgentRuntime | PlanningRuntime:
     if runtime_name == "native":
         return NativeAgentRuntime(
             provider=FakeProvider(),
             tool_registry=registry,
             max_steps=5,
         )
-
+    if runtime_name == "planning":
+        return PlanningRuntime(
+            provider=FakeProvider(),
+            tool_registry=registry,
+            max_steps=5,
+        )
     return LangGraphAgentRuntime(tool_registry=registry)
 
 
 def _validate_runtime_name(runtime_name: str) -> RuntimeName:
     normalized = runtime_name.strip().lower()
-
     if normalized == "native":
         return "native"
-
     if normalized == "langgraph":
         return "langgraph"
-
+    if normalized == "planning":
+        return "planning"
     raise typer.BadParameter(
-        f"Unknown runtime: {runtime_name}. Supported runtimes: native, langgraph.",
+        f"Unknown runtime: {runtime_name}.\n"
+        "Supported runtimes: native, langgraph, planning.",
         param_hint="--runtime",
     )
 

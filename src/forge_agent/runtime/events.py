@@ -16,6 +16,12 @@ TraceEventType = Literal[
     "runtime_stop",
     "workflow_node",
     "workflow_route",
+    "plan_created",
+    "plan_step_started",
+    "plan_step_completed",
+    "plan_step_failed",
+    "replan_triggered",
+    "plan_completed",
 ]
 
 
