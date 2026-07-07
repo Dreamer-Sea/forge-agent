@@ -904,3 +904,38 @@ uv run forge run "echo hello" --runtime planning --max-steps 0
 ```
 
 See [Planning Runtime Architecture](docs/planning-architecture.md) for the detailed design.
+
+## Reflection / Verification Runtime
+
+`forge-agent` includes a Reflection Runtime that verifies an agent answer before
+returning it to the caller.
+
+The reflection flow is:
+
+    final_answer -> verify -> accept / revise / retry / abort
+
+Key components:
+
+- `VerificationResult`: structured verification result with decision, reasons,
+  missing evidence, unsupported claims, and confidence.
+- `RuleVerifier`: deterministic runtime verifier for empty answers, failed tool
+  executions, permission failures, abnormal outputs, and max-step termination.
+- `RagVerifier`: citation-groundedness verifier for RAG answers.
+- `ReflectionRuntime`: wrapper runtime that composes with an existing runtime and
+  adds a verification gate.
+- Reflection trace events: `reflection_started`, `verification_result`,
+  `critique_generated`, `revision_requested`, `reflection_completed`, and
+  `reflection_failed`.
+
+Run with reflection enabled:
+
+    uv run forge run "echo hello" --runtime reflection
+
+Run evals with reflection reporting:
+
+    uv run forge eval examples/evals/reflection_runtime_eval.jsonl \
+      --runtime reflection \
+      --output examples/reports/reflection-report.md \
+      --trace-out examples/reports/reflection-traces.jsonl
+
+See `docs/reflection-architecture.md` for the detailed design.
