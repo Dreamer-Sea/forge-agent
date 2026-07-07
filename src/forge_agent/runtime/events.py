@@ -28,6 +28,11 @@ TraceEventType = Literal[
     "revision_requested",
     "reflection_completed",
     "reflection_failed",
+    "memory_recall_started",
+    "memory_recall_result",
+    "memory_write_attempted",
+    "memory_write_skipped",
+    "memory_write_completed",
 ]
 
 
