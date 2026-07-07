@@ -27,6 +27,9 @@ class FakeMemoryStore:
         query: str,
         scope: MemoryScope | None = None,
         top_k: int = 5,
+        *,
+        scope_id: str | None = None,
+        type_filter: MemoryType | None = None,
     ) -> list[MemorySearchResult]:
         normalized_query = query.lower()
         results: list[MemorySearchResult] = []
@@ -34,7 +37,10 @@ class FakeMemoryStore:
         for record in self._records.values():
             if scope is not None and record.scope != scope:
                 continue
-
+            if scope_id is not None and record.scope_id != scope_id:
+                continue
+            if type_filter is not None and record.type != type_filter:
+                continue
             if normalized_query not in record.content.lower():
                 continue
 
@@ -49,11 +55,23 @@ class FakeMemoryStore:
 
         return results[:top_k]
 
-    def list(self, scope: MemoryScope | None = None) -> list[MemoryRecord]:
+    def list(
+        self,
+        scope: MemoryScope | None = None,
+        *,
+        scope_id: str | None = None,
+        type_filter: MemoryType | None = None,
+    ) -> list[MemoryRecord]:
         records = list(self._records.values())
-        if scope is None:
-            return records
-        return [record for record in records if record.scope == scope]
+
+        if scope is not None:
+            records = [record for record in records if record.scope == scope]
+        if scope_id is not None:
+            records = [record for record in records if record.scope_id == scope_id]
+        if type_filter is not None:
+            records = [record for record in records if record.type == type_filter]
+
+        return records
 
     def update(self, record_id: str, patch: dict[str, Any]) -> MemoryRecord:
         record = self._records[record_id]
@@ -88,8 +106,16 @@ def test_memory_store_protocol_supports_add_list_search_update_and_delete() -> N
     assert stored == record
     assert store.list() == [record]
     assert store.list(scope=MemoryScope.USER) == []
+    assert store.list(scope=MemoryScope.PROJECT, scope_id="forge-agent") == [record]
+    assert store.list(type_filter=MemoryType.SEMANTIC) == [record]
 
-    results = store.search("Python 3.13", scope=MemoryScope.PROJECT, top_k=5)
+    results = store.search(
+        "Python 3.13",
+        scope=MemoryScope.PROJECT,
+        top_k=5,
+        scope_id="forge-agent",
+        type_filter=MemoryType.SEMANTIC,
+    )
     assert len(results) == 1
     assert results[0].record == record
     assert results[0].score == 1.0

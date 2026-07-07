@@ -9,15 +9,21 @@ from forge_agent.memory.models import (
     MemoryType,
     MemoryWriteDecision,
 )
+from forge_agent.memory.policy import MemoryWritePolicy
+from forge_agent.memory.retriever import MemoryRetriever
 from forge_agent.memory.store import MemoryStore
+from forge_agent.memory.writer import MemoryWriter
 
 __all__ = [
     "InMemoryStore",
     "JsonlMemoryStore",
     "MemoryRecord",
+    "MemoryRetriever",
     "MemoryScope",
     "MemorySearchResult",
     "MemoryStore",
     "MemoryType",
     "MemoryWriteDecision",
+    "MemoryWritePolicy",
+    "MemoryWriter",
 ]

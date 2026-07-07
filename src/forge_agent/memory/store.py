@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-from forge_agent.memory.models import MemoryRecord, MemoryScope, MemorySearchResult
+from forge_agent.memory.models import MemoryRecord, MemoryScope, MemorySearchResult, MemoryType
 
 
 @runtime_checkable
@@ -19,13 +19,22 @@ class MemoryStore(Protocol):
         query: str,
         scope: MemoryScope | None = None,
         top_k: int = 5,
+        *,
+        scope_id: str | None = None,
+        type_filter: MemoryType | None = None,
     ) -> list[MemorySearchResult]:
-        """Search memory records by query and optional scope."""
+        """Search memory records by query and optional filters."""
 
         ...
 
-    def list(self, scope: MemoryScope | None = None) -> list[MemoryRecord]:
-        """List memory records, optionally filtered by scope."""
+    def list(
+        self,
+        scope: MemoryScope | None = None,
+        *,
+        scope_id: str | None = None,
+        type_filter: MemoryType | None = None,
+    ) -> list[MemoryRecord]:
+        """List memory records, optionally filtered by scope and type."""
 
         ...
 
