@@ -28,6 +28,11 @@ class EvalRunOutput(BaseModel):
     final_answer: str
     stopped_reason: str = "completed"
     sources: list[str] = Field(default_factory=list)
+    reflection_attempts: int = 0
+    verification_passed: bool | None = None
+    verification_reasons: list[str] = Field(default_factory=list)
+    unsupported_claims: list[str] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
 
 
 class EvalCaseExecutor(Protocol):
@@ -63,6 +68,11 @@ class EvalResult(BaseModel):
     error_message: str | None = None
     run_id: str
     trace_events: list[TraceEvent] = Field(default_factory=list)
+    reflection_attempts: int = 0
+    verification_passed: bool | None = None
+    verification_reasons: list[str] = Field(default_factory=list)
+    unsupported_claims: list[str] = Field(default_factory=list)
+    missing_evidence: list[str] = Field(default_factory=list)
 
     @property
     def passed(self) -> bool:
@@ -105,10 +115,8 @@ class EvalRunner:
     async def run_dataset(self, dataset: EvalDataset) -> EvalSuiteResult:
         """Run every case in a dataset and continue after failures."""
         results: list[EvalResult] = []
-
         for case in dataset.cases:
             results.append(await self.run_case(case))
-
         return EvalSuiteResult(results=results)
 
     async def run_case(self, case: EvalCase) -> EvalResult:
@@ -144,7 +152,6 @@ class EvalRunner:
             answer=output.final_answer,
             stopped_reason=output.stopped_reason,
         )
-
         return self._evaluate_case(
             case=case,
             output=output,
@@ -178,13 +185,15 @@ class EvalRunner:
         ]
 
         failure_reasons: list[EvalFailureReason] = []
-
         if missing_tools:
             failure_reasons.append("missing_expected_tool")
+
         if missing_texts:
             failure_reasons.append("missing_expected_text")
+
         if missing_sources:
             failure_reasons.append("wrong_source")
+
         if (
             case.expected_stopped_reason is not None
             and output.stopped_reason != case.expected_stopped_reason
@@ -210,16 +219,19 @@ class EvalRunner:
             failure_reasons=failure_reasons,
             run_id=recorder.run_id,
             trace_events=list(recorder.events),
+            reflection_attempts=output.reflection_attempts,
+            verification_passed=output.verification_passed,
+            verification_reasons=output.verification_reasons,
+            unsupported_claims=output.unsupported_claims,
+            missing_evidence=output.missing_evidence,
         )
 
 
 def _observed_tools(events: Iterable[TraceEvent]) -> list[str]:
     tools: list[str] = []
-
     for event in events:
         if event.event_type == "tool_call" and event.name is not None:
             tools.append(event.name)
-
     return tools
 
 

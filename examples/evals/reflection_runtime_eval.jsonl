@@ -1,0 +1,1 @@
+{"id":"reflection_echo_001","input":"echo hello","expected_tools":["echo_text"],"expected_contains":["echo_text"]}

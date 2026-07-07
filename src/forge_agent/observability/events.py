@@ -16,6 +16,12 @@ TraceEventType = Literal[
     "permission_denied",
     "workflow_node",
     "final_answer",
+    "reflection_started",
+    "verification_result",
+    "critique_generated",
+    "revision_requested",
+    "reflection_completed",
+    "reflection_failed",
 ]
 
 

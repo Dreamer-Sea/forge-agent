@@ -10,13 +10,15 @@ from pydantic import BaseModel, Field, model_validator
 from forge_agent.runtime.events import TraceEvent
 from forge_agent.tools.base import ToolResult
 
-RuntimeName = Literal["native", "langgraph", "planning"]
+RuntimeName = Literal["native", "langgraph", "planning", "reflection"]
 StoppedReason = Literal[
     "completed",
     "max_steps",
     "error",
     "planning_failed",
     "replan_limit_reached",
+    "verification_failed",
+    "reflection_limit_reached",
 ]
 
 DEFAULT_RUNTIME_NAME: RuntimeName = "native"

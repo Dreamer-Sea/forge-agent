@@ -42,7 +42,10 @@ class EvalReport(BaseModel):
             "",
             f"- case_count: {self.metrics.case_count}",
             f"- success_rate: {_format_rate(self.metrics.success_rate)}",
-            (f"- tool_call_success_rate: {_format_rate(self.metrics.tool_call_success_rate)}"),
+            (
+                f"- tool_call_success_rate: "
+                f"{_format_rate(self.metrics.tool_call_success_rate)}"
+            ),
             (
                 "- expected_contains_pass_rate: "
                 f"{_format_rate(self.metrics.expected_contains_pass_rate)}"
@@ -50,9 +53,41 @@ class EvalReport(BaseModel):
             f"- failed_cases: {len(self.metrics.failed_cases)}",
             f"- trace_file: {self.trace_file}",
             "",
-            "## Failed Cases",
+            "## Reflection Verification",
             "",
         ]
+
+        if not self.results:
+            lines.append("No eval results.")
+            lines.append("")
+        else:
+            lines.extend(
+                [
+                    (
+                        "| case_id | reflection_attempts | verification_passed | "
+                        "verification_reasons | unsupported_claims | missing_evidence |"
+                    ),
+                    "|---|---:|---|---|---|---|",
+                ]
+            )
+            for result in self.results:
+                lines.append(
+                    "| "
+                    f"{result.case_id} | "
+                    f"{result.reflection_attempts} | "
+                    f"{_format_optional_bool(result.verification_passed)} | "
+                    f"{_format_list(result.verification_reasons)} | "
+                    f"{_format_list(result.unsupported_claims)} | "
+                    f"{_format_list(result.missing_evidence)} |"
+                )
+            lines.append("")
+
+        lines.extend(
+            [
+                "## Failed Cases",
+                "",
+            ]
+        )
 
         failed_results = [result for result in self.results if not result.passed]
         if not failed_results:
@@ -100,6 +135,18 @@ class EvalReport(BaseModel):
 
 def _format_rate(value: float) -> str:
     return f"{value:.2%}"
+
+
+def _format_optional_bool(value: bool | None) -> str:
+    if value is None:
+        return "-"
+    return str(value).lower()
+
+
+def _format_list(values: list[str]) -> str:
+    if not values:
+        return "-"
+    return ", ".join(values)
 
 
 def _format_missing(result: EvalResult) -> str:
