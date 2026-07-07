@@ -482,7 +482,7 @@ def _sanitize_trace_arguments(arguments: dict[str, Any]) -> dict[str, Any]:
 
 def _sanitize_path_argument(value: str) -> str:
     if _looks_like_sensitive_absolute_path(value):
-        return ""
+        return "<redacted-path>"
     return value
 
 

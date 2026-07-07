@@ -11,15 +11,16 @@ class FakeProvider:
 
     The fake provider simulates minimal tool-calling flows:
 
-    1. For knowledge base tasks:
+    1. For memory recall demos:
+       - If long-term memory context answers a Python-version question, return it.
+       - If the user explicitly asks to remember something, acknowledge it.
+    2. For knowledge base tasks:
        - First call: request search_knowledge_base.
        - Second call: return a grounded answer from the tool observation.
-
-    2. For echo tasks:
+    3. For echo tasks:
        - First call: request echo_text.
        - Second call: return final answer after observing tool results.
-
-    3. For regular workspace inspection tasks:
+    4. For regular workspace inspection tasks:
        - First call: request list_files and read_file.
        - Second call: return final answer after observing tool results.
     """
@@ -30,12 +31,12 @@ class FakeProvider:
         tools: list[dict[str, Any]],
     ) -> ProviderResponse:
         tool_observations = [message for message in messages if message.role == "tool"]
-
         if tool_observations:
             rag_observations = [
-                message for message in tool_observations if message.name == "search_knowledge_base"
+                message
+                for message in tool_observations
+                if message.name == "search_knowledge_base"
             ]
-
             if rag_observations:
                 return ProviderResponse(
                     final_answer=self._answer_from_knowledge_base(rag_observations[-1])
@@ -44,15 +45,22 @@ class FakeProvider:
             observed_tool_names = ", ".join(
                 message.name for message in tool_observations if message.name is not None
             )
-
             return ProviderResponse(
                 final_answer=(
                     "I inspected the workspace using these tools: "
-                    f"{observed_tool_names}. The README was requested successfully."
+                    f"{observed_tool_names}.\n"
+                    "The README was requested successfully."
                 )
             )
 
         latest_user_input = self._latest_user_input(messages)
+
+        memory_answer = self._answer_from_memory_context(messages, latest_user_input)
+        if memory_answer is not None:
+            return ProviderResponse(final_answer=memory_answer)
+
+        if self._is_memory_write_request(latest_user_input):
+            return ProviderResponse(final_answer="Memory write request accepted.")
 
         if "echo" in latest_user_input.lower():
             return ProviderResponse(
@@ -99,18 +107,61 @@ class FakeProvider:
 
     def _latest_user_input(self, messages: list[ModelMessage]) -> str:
         user_messages = [message for message in messages if message.role == "user"]
-
         if not user_messages:
             return ""
-
         return user_messages[-1].content
+
+    def _answer_from_memory_context(
+        self,
+        messages: list[ModelMessage],
+        user_input: str,
+    ) -> str | None:
+        lowered = user_input.casefold()
+        asks_python_version = (
+            "python" in lowered
+            and (
+                "版本" in lowered
+                or "version" in lowered
+                or "默认使用" in lowered
+                or "default" in lowered
+            )
+        )
+        if not asks_python_version:
+            return None
+
+        memory_context = "\n".join(
+            message.content
+            for message in messages
+            if message.role == "system" and "## Long-term Memory" in message.content
+        )
+        if not memory_context:
+            return None
+
+        for line in memory_context.splitlines():
+            if "Python 3.13" in line and "uv" in line:
+                return "根据长期记忆，项目默认使用 Python 3.13 和 uv。"
+            if "Python 3.13" in line:
+                return "根据长期记忆，项目默认使用 Python 3.13。"
+
+        return None
+
+    def _is_memory_write_request(self, user_input: str) -> bool:
+        normalized = user_input.strip().casefold()
+        return normalized.startswith(
+            (
+                "记住",
+                "请记住",
+                "记一下",
+                "保存",
+                "remember",
+                "please remember",
+            )
+        )
 
     def _extract_echo_text(self, user_input: str) -> str:
         normalized = user_input.strip()
-
         if normalized.lower().startswith("echo "):
             return normalized[5:].strip() or normalized
-
         return normalized
 
     def _should_search_knowledge_base(
@@ -122,7 +173,6 @@ class FakeProvider:
             return False
 
         lowered = user_input.lower()
-
         return any(
             keyword in lowered
             for keyword in [
@@ -139,18 +189,15 @@ class FakeProvider:
 
     def _extract_knowledge_query(self, user_input: str) -> str:
         normalized = user_input.strip()
-
         prefixes = [
             "根据知识库回答：",
             "根据知识库回答:",
             "knowledge base:",
             "Knowledge base:",
         ]
-
         for prefix in prefixes:
             if normalized.startswith(prefix):
                 return normalized[len(prefix) :].strip() or normalized
-
         return normalized
 
     def _answer_from_knowledge_base(self, observation: ModelMessage) -> str:
@@ -175,7 +222,6 @@ class FakeProvider:
             for citation in citations
             if isinstance(citation, dict) and "citation" in citation
         ]
-
         citation_text = "\n".join(citation_lines)
 
         if citation_text:
