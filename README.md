@@ -10,6 +10,57 @@ This repository is intentionally scoped as a learning and portfolio project. It 
 
 ---
 
+## Long-term Memory
+
+`forge-agent` supports a scoped long-term memory system that extends static RAG with dynamic, cross-run experience reuse.
+
+Runtime flow:
+
+```text
+memory recall -> context compose -> agent run -> memory write
+```
+
+The memory system includes:
+
+- `MemoryRecord`, `MemoryType`, and `MemoryScope`
+- `MemoryStore` protocol
+- deterministic `InMemoryStore`
+- persistent `JsonlMemoryStore`
+- `MemoryRetriever`
+- `MemoryWriter`
+- `MemoryWritePolicy`
+- `ContextComposer`
+- memory recall/write integration in `NativeAgentRuntime`
+- memory trace events
+- CLI support for memory-enabled runs, listing, and search
+
+Memory-enabled run:
+
+```bash
+uv run forge run "记住：我的项目默认使用 Python 3.13 和 uv" \
+  --memory-path .memory \
+  --session-id demo \
+  --max-steps 1
+```
+
+Recall memory in a later run:
+
+```bash
+uv run forge run "我的项目默认使用什么 Python 版本？" \
+  --memory-path .memory \
+  --session-id demo \
+  --max-steps 1
+```
+
+Inspect memory:
+
+```bash
+uv run forge memory list --memory-path .memory --session-id demo
+uv run forge memory search "Python 3.13" --memory-path .memory --session-id demo
+```
+
+Memory is documented in [docs/memory-system.md](docs/memory-system.md).
+
 ## Project Overview
 
 `forge-agent` decomposes an AI Agent Platform into clear engineering boundaries:

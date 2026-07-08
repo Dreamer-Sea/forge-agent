@@ -9,6 +9,7 @@ import typer
 from forge_agent.cli.langchain import langchain_app
 from forge_agent.evals import EvalDataset, EvalReport, EvalRunner, RuntimeEvalExecutor
 from forge_agent.integrations.langgraph import LangGraphAgentRuntime
+from forge_agent.memory import JsonlMemoryStore, MemoryScope, MemoryStore, MemoryType
 from forge_agent.observability import JsonlTraceExporter
 from forge_agent.providers.fake import FakeProvider
 from forge_agent.rag.evals import (
@@ -28,7 +29,9 @@ from forge_agent.tools.registry import ToolRegistry
 
 app = typer.Typer(help="A minimal Agent Platform demo CLI.")
 rag_app = typer.Typer(help="RAG commands.")
+memory_app = typer.Typer(help="Long-term memory commands.")
 app.add_typer(rag_app, name="rag")
+app.add_typer(memory_app, name="memory")
 app.add_typer(langchain_app, name="langchain")
 
 
@@ -65,12 +68,43 @@ def run(
             help="Maximum model steps for the selected runtime.",
         ),
     ] = 5,
+    memory_path: Annotated[
+        Path | None,
+        typer.Option(
+            "--memory-path",
+            help="Path to a local JSONL memory directory.",
+        ),
+    ] = None,
+    session_id: Annotated[
+        str | None,
+        typer.Option(
+            "--session-id",
+            help="Session id used to isolate session-scoped memories.",
+        ),
+    ] = None,
+    memory_top_k: Annotated[
+        int,
+        typer.Option(
+            "--memory-top-k",
+            help="Maximum number of memories recalled before a run.",
+        ),
+    ] = 5,
 ) -> None:
     """Run one agent task."""
 
     selected_runtime = _validate_runtime_name(runtime_name)
 
     workspace = Workspace(Path.cwd())
+    if memory_top_k <= 0:
+        raise typer.BadParameter(
+            "memory-top-k must be greater than 0",
+            param_hint="--memory-top-k",
+        )
+    memory_store = _load_memory_store_if_requested(
+        memory_path,
+        workspace=workspace,
+    )
+    memory_scope_id = _normalize_optional_text(session_id)
     local_knowledge_base = _load_knowledge_base_if_exists(
         knowledge_base,
         workspace=workspace,
@@ -88,6 +122,9 @@ def run(
     runtime = _create_runtime(
         runtime_name=selected_runtime,
         registry=registry,
+        memory_store=memory_store,
+        memory_scope_id=memory_scope_id,
+        memory_top_k=memory_top_k,
     )
 
     result = runtime.run(task, config=RunConfig(max_steps=max_steps))
@@ -96,6 +133,10 @@ def run(
     tools_used = ", ".join(dict.fromkeys(tool_names)) if tool_names else "none"
 
     typer.echo(f"runtime: {selected_runtime}")
+    if memory_store is not None:
+        typer.echo("memory: enabled")
+        typer.echo(f"memory_scope: {MemoryScope.SESSION.value}")
+        typer.echo(f"memory_session_id: {memory_scope_id or 'default'}")
     typer.echo(f"tools_used: {tools_used}")
     typer.echo(f"stopped_reason: {result.stopped_reason}")
     typer.echo(f"final_answer: {result.final_answer or ''}")
@@ -541,16 +582,257 @@ def rag_eval(
         typer.echo(f"JSON report written: {workspace.safe_display(resolved_json_output_path)}")
 
 
+
+@memory_app.command("list")
+def memory_list(
+    memory_path: Annotated[
+        Path,
+        typer.Option(
+            "--memory-path",
+            help="Path to a local JSONL memory directory.",
+        ),
+    ] = Path(".memory"),
+    scope_name: Annotated[
+        str | None,
+        typer.Option(
+            "--scope",
+            help="Optional memory scope: global, user, session, or project.",
+        ),
+    ] = None,
+    session_id: Annotated[
+        str | None,
+        typer.Option(
+            "--session-id",
+            help="Optional session id filter for session-scoped memories.",
+        ),
+    ] = None,
+    memory_type_name: Annotated[
+        str | None,
+        typer.Option(
+            "--type",
+            help="Optional memory type: semantic, episodic, or summary.",
+        ),
+    ] = None,
+) -> None:
+    """List persisted long-term memories."""
+
+    workspace = Workspace(Path.cwd())
+    store = _load_memory_store(memory_path, workspace=workspace)
+    scope = _validate_optional_memory_scope(scope_name)
+    memory_type = _validate_optional_memory_type(memory_type_name)
+    scope_id = _normalize_optional_text(session_id)
+
+    records = store.list(
+        scope=scope,
+        scope_id=scope_id,
+        type_filter=memory_type,
+    )
+
+    typer.echo(f"Memory path: {workspace.safe_display(memory_path)}")
+    typer.echo(f"Records: {len(records)}")
+    if not records:
+        typer.echo("")
+        typer.echo("No memories.")
+        return
+
+    typer.echo("")
+    typer.echo("Memories:")
+    for record in records:
+        scope_display = (
+            f"{record.scope.value}:{record.scope_id}"
+            if record.scope_id is not None
+            else record.scope.value
+        )
+        typer.echo(
+            f"- id={record.id} type={record.type.value} "
+            f"scope={scope_display} source={record.source}"
+        )
+        typer.echo(f"  {record.content}")
+
+
+@memory_app.command("search")
+def memory_search(
+    query: Annotated[
+        str,
+        typer.Argument(help="Query to search in long-term memory."),
+    ],
+    memory_path: Annotated[
+        Path,
+        typer.Option(
+            "--memory-path",
+            help="Path to a local JSONL memory directory.",
+        ),
+    ] = Path(".memory"),
+    scope_name: Annotated[
+        str | None,
+        typer.Option(
+            "--scope",
+            help="Optional memory scope: global, user, session, or project.",
+        ),
+    ] = None,
+    session_id: Annotated[
+        str | None,
+        typer.Option(
+            "--session-id",
+            help="Optional session id filter for session-scoped memories.",
+        ),
+    ] = None,
+    memory_type_name: Annotated[
+        str | None,
+        typer.Option(
+            "--type",
+            help="Optional memory type: semantic, episodic, or summary.",
+        ),
+    ] = None,
+    top_k: Annotated[
+        int,
+        typer.Option(
+            "--top-k",
+            help="Maximum number of search results.",
+        ),
+    ] = 5,
+) -> None:
+    """Search persisted long-term memories."""
+
+    if top_k <= 0:
+        raise typer.BadParameter(
+            "top-k must be greater than 0",
+            param_hint="--top-k",
+        )
+
+    workspace = Workspace(Path.cwd())
+    store = _load_memory_store(memory_path, workspace=workspace)
+    scope = _validate_optional_memory_scope(scope_name)
+    memory_type = _validate_optional_memory_type(memory_type_name)
+    scope_id = _normalize_optional_text(session_id)
+
+    results = store.search(
+        query,
+        scope=scope,
+        top_k=top_k,
+        scope_id=scope_id,
+        type_filter=memory_type,
+    )
+
+    typer.echo(f"Memory path: {workspace.safe_display(memory_path)}")
+    typer.echo(f"Query: {query}")
+    typer.echo(f"Results: {len(results)}")
+    if not results:
+        typer.echo("")
+        typer.echo("No memories found.")
+        return
+
+    typer.echo("")
+    typer.echo("Memories:")
+    for result in results:
+        record = result.record
+        scope_display = (
+            f"{record.scope.value}:{record.scope_id}"
+            if record.scope_id is not None
+            else record.scope.value
+        )
+        typer.echo(
+            f"- #{result.rank} score={result.score:.4f} "
+            f"type={record.type.value} scope={scope_display} "
+            f"source={record.source}"
+        )
+        typer.echo(f"  {record.content}")
+
+
+def _load_memory_store_if_requested(
+    memory_path: Path | None,
+    *,
+    workspace: Workspace,
+) -> JsonlMemoryStore | None:
+    if memory_path is None:
+        return None
+    return _load_memory_store(memory_path, workspace=workspace)
+
+
+def _load_memory_store(
+    memory_path: Path,
+    *,
+    workspace: Workspace,
+) -> JsonlMemoryStore:
+    try:
+        resolved_path = workspace.resolve_user_path(
+            memory_path,
+            tool_name="memory",
+        )
+    except ToolError as error:
+        typer.echo(f"Error: {error.message}", err=True)
+        typer.echo(f"Reason: {error.reason}", err=True)
+        typer.echo(f"Code: {error.error_code}", err=True)
+        raise typer.Exit(code=1) from error
+
+    return JsonlMemoryStore(resolved_path)
+
+
+def _validate_optional_memory_scope(scope_name: str | None) -> MemoryScope | None:
+    normalized = _normalize_optional_text(scope_name)
+    if normalized is None:
+        return None
+    return _validate_memory_scope(normalized)
+
+
+def _validate_memory_scope(scope_name: str) -> MemoryScope:
+    normalized = scope_name.strip().lower()
+    if normalized in {"global", "user", "session", "project"}:
+        return cast(MemoryScope, normalized)
+
+    raise typer.BadParameter(
+        f"Unknown memory scope: {scope_name}.\n"
+        "Supported memory scopes: global, user, session, project.",
+        param_hint="--scope",
+    )
+
+
+def _validate_optional_memory_type(memory_type_name: str | None) -> MemoryType | None:
+    normalized = _normalize_optional_text(memory_type_name)
+    if normalized is None:
+        return None
+    return _validate_memory_type(normalized)
+
+
+def _validate_memory_type(memory_type_name: str) -> MemoryType:
+    normalized = memory_type_name.strip().lower()
+    if normalized in {"semantic", "episodic", "summary"}:
+        return cast(MemoryType, normalized)
+
+    raise typer.BadParameter(
+        f"Unknown memory type: {memory_type_name}.\n"
+        "Supported memory types: semantic, episodic, summary.",
+        param_hint="--type",
+    )
+
+
+def _normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+
+    return normalized
+
 def _create_runtime(
     *,
     runtime_name: RuntimeName,
     registry: ToolRegistry,
+    memory_store: MemoryStore | None = None,
+    memory_scope_id: str | None = None,
+    memory_top_k: int = 5,
 ) -> NativeAgentRuntime | LangGraphAgentRuntime | PlanningRuntime | ReflectionRuntime:
     if runtime_name == "native":
         return NativeAgentRuntime(
             provider=FakeProvider(),
             tool_registry=registry,
             max_steps=5,
+            memory_store=memory_store,
+            memory_scope=MemoryScope.SESSION,
+            memory_scope_id=memory_scope_id,
+            memory_top_k=memory_top_k,
         )
     if runtime_name == "planning":
         return PlanningRuntime(
@@ -563,6 +845,10 @@ def _create_runtime(
             provider=FakeProvider(),
             tool_registry=registry,
             max_steps=5,
+            memory_store=memory_store,
+            memory_scope=MemoryScope.SESSION,
+            memory_scope_id=memory_scope_id,
+            memory_top_k=memory_top_k,
         )
         return ReflectionRuntime(base_runtime)
 
